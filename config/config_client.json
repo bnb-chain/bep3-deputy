@@ -1,0 +1,90 @@
+{
+  "db_config": {
+    "dialect": "mysql",
+    "db_path": "user:password@(host:port)/db_name?charset=utf8&parseTime=True&loc=Local",
+    "max_bnb_kept_block_height": 7200000,
+    "max_other_kept_block_height": 200000
+  },
+  "alert_config": {
+    "telegram_bot_id": "your_bot_id",
+    "telegram_chat_id": "your_chat_id",
+    "bnb_block_update_time_out": 60,
+    "other_chain_block_update_time_out": 600,
+    "reconciliation_diff_amount": "10"
+  },
+  "chain_config": {
+    "bnb_confirm_num": 2,
+    "bnb_auto_retry_num": 3,
+    "bnb_auto_retry_timeout": 60,
+    "bnb_expire_height_span": 360,
+    "bnb_min_accept_expire_height_span": 10000,
+    "bnb_min_remain_height": 1000,
+    "bnb_min_swap_amount": 0,
+    "bnb_max_swap_amount": 10000000000,
+    "bnb_max_deputy_out_amount": 20000000000,
+    "bnb_ratio": "1",
+    "bnb_fixed_fee": 1000,
+    "bnb_start_height": 113,
+
+    "other_chain": "ETH",
+    "other_chain_confirm_num": 12,
+    "other_chain_decimal": 8,
+    "other_chain_expire_height_span": 60,
+    "other_chain_auto_retry_num": 3,
+    "other_chain_auto_retry_timeout": 1200,
+    "other_chain_min_accept_expire_height_span": 100,
+    "other_chain_min_remain_height": 100,
+    "other_chain_min_swap_amount": 0,
+    "other_chain_max_swap_amount": 10000000000,
+    "other_chain_max_deputy_out_amount": 20000000000,
+    "other_chain_ratio": "1",
+    "other_chain_fixed_fee": 1000,
+    "other_chain_start_height": 6440925
+  },
+  "log_config": {
+    "level": "DEBUG",
+    "filename": "",
+    "max_file_size_in_mb": 0,
+    "max_backups_of_log_files": 0,
+    "max_age_to_retain_log_files_in_days": 0,
+    "use_console_logger": true,
+    "use_file_logger": false,
+    "compress": false
+  },
+  "admin_config": {
+    "listen_addr": "127.0.0.1:8080"
+  },
+  "instrumentation_config": {
+    "prometheus": true,
+    "prometheus_listen_addr": "127.0.0.1:9090"
+  },
+  "bnb_config": {
+    "key_type": "mnemonic",
+    "aws_region": "",
+    "aws_secret_name": "",
+    "mnemonic": "your mnemonic word",
+    "rpc_addr": "tcp://localhost:26657",
+    "symbol": "BNB",
+    "deputy_addr": "your deputy address",
+    "fetch_interval": 2,
+    "token_balance_alert_threshold": 10000,
+    "bnb_balance_alert_threshold": 10000
+  },
+  "eth_config": {
+    "swap_type": "erc20_swap",
+    "key_type": "private_key",
+    "aws_region": "",
+    "aws_secret_name": "",
+    "private_key": "your deputy account private key",
+    "provider": "https://ropsten.infura.io/v3/xxx",
+    "swap_contract_addr": "swap contract address",
+    "token_contract_addr": "token contract address",
+    "deputy_addr": "your deputy address",
+    "gas_limit": 300000,
+    "gas_price": 20000000000,
+    "fetch_interval": 15,
+    "token_balance_alert_threshold": 10000000,
+    "eth_balance_alert_threshold": 500000000000000000,
+    "allowance_balance_alert_threshold": 1000000000
+  }
+}
