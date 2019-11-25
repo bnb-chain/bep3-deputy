@@ -66,12 +66,14 @@ if fixed fee is 100 and deputy need to swap out 1000 tokens, it will deduct fixe
 
 ## Admin config
 
-+ listen_addr: listen address of admin server. If you want to deploy deputy in container, you may need to listen on `0.0.0.0`.
++ listen_addr: listen address of admin server. If you want to deploy deputy in container, you may need to listen on `0.0.0.0`. This listen address 
+should only be exposed to authorized machines.
 
 ## Instrumentation config
 
 + prometheus: export prometheus metrics or not
-+ prometheus_listen_addr: listen address of prometheus. If you want to deploy deputy in container, you may need to listen on `0.0.0.0`.
++ prometheus_listen_addr: listen address of prometheus. If you want to deploy deputy in container, you may need to listen on `0.0.0.0`. This listen address 
+should only be exposed to authorized machines.
 
 ## Binance chain config
 
