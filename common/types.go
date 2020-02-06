@@ -16,6 +16,7 @@ import (
 // chains supported now, if you want to add other chain, pls add chain name here
 const ChainEth = "ETH"
 const ChainBinance = "BNB"
+const ChainKava = "KAVA"
 
 const (
 	DBDialectMysql   = "mysql"
@@ -24,6 +25,10 @@ const (
 
 const BNBSymbol = "BNB"
 const BEP2Decimal = 8
+
+const KAVASymbol = "KAVA"
+
+// const BEP2Decimal = 8
 
 const EthSwapTypeEth = "eth_swap"
 const EthSwapTypeErc20 = "erc20_swap"
@@ -74,6 +79,10 @@ type DeputyStatus struct {
 }
 
 type BnbStatus struct {
+	Balance []types.TokenBalance `json:"balance"`
+}
+
+type KavaStatus struct {
 	Balance []types.TokenBalance `json:"balance"`
 }
 

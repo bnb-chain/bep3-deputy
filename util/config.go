@@ -26,6 +26,7 @@ type Config struct {
 	AdminConfig           *AdminConfig           `json:"admin_config"`
 	BnbConfig             *BnbConfig             `json:"bnb_config"`
 	EthConfig             *EthConfig             `json:"eth_config"`
+	KavaConfig            *KavaConfig            `json:"kava_config"`
 }
 
 type AlertConfig struct {
@@ -111,8 +112,8 @@ func (cfg *ChainConfig) Validate() {
 		panic("bnb_fixed_fee should be no less than 0")
 	}
 
-	if cfg.OtherChain != dc.ChainEth {
-		panic(fmt.Sprintf("other chain only supports %s", dc.ChainEth))
+	if cfg.OtherChain != dc.ChainKava {
+		panic(fmt.Sprintf("other chain only supports %s", dc.ChainKava))
 	}
 	if cfg.OtherChainConfirmNum <= 0 {
 		panic("other_chain_confirm_num should be larger than 0")
@@ -290,6 +291,47 @@ func (cfg *EthConfig) Validate() {
 	}
 }
 
+type KavaConfig struct {
+	KeyType                    string `json:"key_type"`
+	AWSRegion                  string `json:"aws_region"`
+	AWSSecretName              string `json:"aws_secret_name"`
+	Mnemonic                   string `json:"mnemonic"`
+	RpcAddr                    string `json:"rpc_addr"`
+	Symbol                     string `json:"symbol"`
+	FetchInterval              int64  `json:"fetch_interval"`
+	TokenBalanceAlertThreshold int64  `json:"token_balance_alert_threshold"`
+	KavaBalanceAlertThreshold  int64  `json:"kava_balance_alert_threshold"`
+	// TODO: Change DeputyAddr to kava.AccAddress (bech32 prefix 'kava')
+	DeputyAddr types.AccAddress `json:"deputy_addr"`
+}
+
+func (cfg *KavaConfig) Validate() {
+	if cfg.KeyType == "" {
+		panic(fmt.Sprintf("key_type of kava chain should not be empty"))
+	}
+	if cfg.KeyType != KeyTypeMnemonic && cfg.KeyType != KeyTypeAWSMnemonic {
+		panic(fmt.Sprintf("key_type of kava chain only supports %s and %s", KeyTypeMnemonic, KeyTypeAWSMnemonic))
+	}
+	if cfg.KeyType == KeyTypeAWSMnemonic && cfg.AWSRegion == "" {
+		panic(fmt.Sprintf("aws_region of kava chain should not be empty"))
+	}
+	if cfg.KeyType == KeyTypeAWSMnemonic && cfg.AWSSecretName == "" {
+		panic(fmt.Sprintf("aws_secret_name of kava chain should not be empty"))
+	}
+	if cfg.RpcAddr == "" {
+		panic(fmt.Sprintf("rpc address of kava chain should not be empty"))
+	}
+	if cfg.Symbol == "" {
+		panic(fmt.Sprintf("symbol of kava chain should not be empty"))
+	}
+	if len(cfg.DeputyAddr) != types.AddrLen {
+		panic(fmt.Sprintf("length of deputy address should be %d", types.AddrLen))
+	}
+	if cfg.FetchInterval <= 0 {
+		panic(fmt.Sprintf("fetch_interval of kava chain should be larger than 0"))
+	}
+}
+
 type LogConfig struct {
 	Level                        string `json:"level"`
 	Filename                     string `json:"filename"`
@@ -320,7 +362,7 @@ func (cfg *Config) Validate() {
 	cfg.ChainConfig.Validate()
 	cfg.BnbConfig.Validate()
 	cfg.AdminConfig.Validate()
-	cfg.EthConfig.Validate()
+	cfg.KavaConfig.Validate()
 	cfg.LogConfig.Validate()
 }
 

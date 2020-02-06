@@ -19,7 +19,8 @@ import (
 	"github.com/binance-chain/bep3-deputy/common"
 	"github.com/binance-chain/bep3-deputy/deputy"
 	"github.com/binance-chain/bep3-deputy/executor/bnb"
-	"github.com/binance-chain/bep3-deputy/executor/eth"
+
+	"github.com/binance-chain/bep3-deputy/executor/kava"
 	"github.com/binance-chain/bep3-deputy/observer"
 	"github.com/binance-chain/bep3-deputy/store"
 	"github.com/binance-chain/bep3-deputy/util"
@@ -30,6 +31,7 @@ const flagConfigAwsRegion = "aws-region"
 const flagConfigAwsSecretKey = "aws-secret-key"
 const flagConfigPath = "config-path"
 const flagBnbNetwork = "bnb-network"
+const flagKavaNetwork = "kava-network"
 
 const ConfigTypeLocal = "local"
 const ConfigTypeAws = "aws"
@@ -54,6 +56,7 @@ func initFlags() {
 	flag.String(flagConfigAwsRegion, "", "aws s3 region")
 	flag.String(flagConfigAwsSecretKey, "", "aws s3 secret key")
 	flag.Int(flagBnbNetwork, int(types.TestNetwork), "binance chain network type")
+	flag.Int(flagKavaNetwork, int(types.TestNetwork), "kava network type")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
@@ -62,6 +65,14 @@ func initFlags() {
 
 func main() {
 	initFlags()
+
+	kavaNetwork := viper.GetInt(flagKavaNetwork)
+	if kavaNetwork != int(types.TestNetwork) && kavaNetwork != int(types.ProdNetwork) {
+		printUsage()
+		return
+	}
+	// we set kava chain network type first because we need to parse kava chain address from config
+	types.Network = types.ChainNetwork(kavaNetwork)
 
 	bnbNetwork := viper.GetInt(flagBnbNetwork)
 	if bnbNetwork != int(types.TestNetwork) && bnbNetwork != int(types.ProdNetwork) {
@@ -143,18 +154,12 @@ func main() {
 	store.InitTables(db)
 
 	bnbExecutor := bnb.NewExecutor(config.BnbConfig.RpcAddr, types.ChainNetwork(bnbNetwork), config.BnbConfig)
+	kavaExecutor := kava.NewExecutor(config.KavaConfig.RpcAddr, types.ChainNetwork(kavaNetwork), config.KavaConfig)
 
-	var ethExecutor common.Executor
-	if config.EthConfig.SwapType == common.EthSwapTypeEth {
-		ethExecutor = eth.NewEthExecutor(config.EthConfig.Provider, config.EthConfig.SwapContractAddr, config)
-	} else {
-		ethExecutor = eth.NewErc20Executor(config.EthConfig.Provider, config.EthConfig.SwapContractAddr, config)
-	}
-
-	dp := deputy.NewDeputy(db, config, bnbExecutor, ethExecutor)
+	dp := deputy.NewDeputy(db, config, bnbExecutor, kavaExecutor)
 	dp.Start()
 
-	ob := observer.NewObserver(db, config, bnbExecutor, ethExecutor)
+	ob := observer.NewObserver(db, config, bnbExecutor, kavaExecutor)
 	ob.Start()
 
 	adm := admin.NewAdmin(config, dp)
