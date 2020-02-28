@@ -24,7 +24,7 @@
     "bnb_max_deputy_out_amount": 20000000000,
     "bnb_ratio": "1",
     "bnb_fixed_fee": 1000,
-    "bnb_start_height": 64813636,
+    "bnb_start_height": 68532338,
 
     "other_chain": "KAVA",
     "other_chain_confirm_num": 2,
@@ -39,7 +39,7 @@
     "other_chain_max_deputy_out_amount": 20000000000,
     "other_chain_ratio": "1",
     "other_chain_fixed_fee": 1000,
-    "other_chain_start_height": 50
+    "other_chain_start_height": 2
   },
   "log_config": {
     "level": "DEBUG",
@@ -77,7 +77,7 @@
     "mnemonic": "sorry not on git",
     "rpc_addr": "tcp://localhost:26657",
     "symbol": "KAVA",
-    "deputy_addr": "tbnb157dxmw9jz5emuf0apj4d6p3ee42ck0uwksxfff",
+    "deputy_addr": "kava15qdefkmwswysgg4qxgqpqr35k3m49pkx2jdfnw",
     "fetch_interval": 2,
     "token_balance_alert_threshold": 10000,
     "kava_balance_alert_threshold": 10000

@@ -154,7 +154,8 @@ func main() {
 	store.InitTables(db)
 
 	bnbExecutor := bnb.NewExecutor(config.BnbConfig.RpcAddr, types.ChainNetwork(bnbNetwork), config.BnbConfig)
-	kavaExecutor := kava.NewExecutor(config.KavaConfig.RpcAddr, types.ChainNetwork(kavaNetwork), config.KavaConfig)
+	// TODO:  kava.ChainNetwork(kavaNetwork) should be imported from kava's go-sdk
+	kavaExecutor := kava.NewExecutor(config.KavaConfig.RpcAddr, kava.ChainNetwork(kavaNetwork), config.KavaConfig)
 
 	dp := deputy.NewDeputy(db, config, bnbExecutor, kavaExecutor)
 	dp.Start()

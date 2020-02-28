@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"time"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/binance-chain/go-sdk/common/types"
@@ -83,7 +84,7 @@ type BnbStatus struct {
 }
 
 type KavaStatus struct {
-	Balance []types.TokenBalance `json:"balance"`
+	Balance sdk.Coins `json:"balance"`
 }
 
 type EthStatus struct {

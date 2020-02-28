@@ -6,7 +6,11 @@ import (
 	"io/ioutil"
 	"math/big"
 
+	"github.com/kava-labs/kava/app"
+
 	"github.com/binance-chain/go-sdk/common/types"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 
 	dc "github.com/binance-chain/bep3-deputy/common"
@@ -292,17 +296,16 @@ func (cfg *EthConfig) Validate() {
 }
 
 type KavaConfig struct {
-	KeyType                    string `json:"key_type"`
-	AWSRegion                  string `json:"aws_region"`
-	AWSSecretName              string `json:"aws_secret_name"`
-	Mnemonic                   string `json:"mnemonic"`
-	RpcAddr                    string `json:"rpc_addr"`
-	Symbol                     string `json:"symbol"`
-	FetchInterval              int64  `json:"fetch_interval"`
-	TokenBalanceAlertThreshold int64  `json:"token_balance_alert_threshold"`
-	KavaBalanceAlertThreshold  int64  `json:"kava_balance_alert_threshold"`
-	// TODO: Change DeputyAddr to kava.AccAddress (bech32 prefix 'kava')
-	DeputyAddr types.AccAddress `json:"deputy_addr"`
+	KeyType                    string         `json:"key_type"`
+	AWSRegion                  string         `json:"aws_region"`
+	AWSSecretName              string         `json:"aws_secret_name"`
+	Mnemonic                   string         `json:"mnemonic"`
+	RpcAddr                    string         `json:"rpc_addr"`
+	Symbol                     string         `json:"symbol"`
+	FetchInterval              int64          `json:"fetch_interval"`
+	TokenBalanceAlertThreshold int64          `json:"token_balance_alert_threshold"`
+	KavaBalanceAlertThreshold  int64          `json:"kava_balance_alert_threshold"`
+	DeputyAddr                 sdk.AccAddress `json:"deputy_addr"`
 }
 
 func (cfg *KavaConfig) Validate() {
@@ -375,6 +378,13 @@ func ParseConfigFromJson(content string) *Config {
 }
 
 func ParseConfigFromFile(filePath string) *Config {
+	// TODO: set Kava prefixes elsewhere
+	// --------------------------------------
+	kavaConfig := sdk.GetConfig()
+	app.SetBech32AddressPrefixes(kavaConfig)
+	kavaConfig.Seal()
+	// --------------------------------------
+
 	bz, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		panic(err)

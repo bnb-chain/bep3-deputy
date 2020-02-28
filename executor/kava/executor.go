@@ -10,13 +10,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/binance-chain/go-sdk/client/rpc"
-	"github.com/binance-chain/go-sdk/common/types"
-	"github.com/binance-chain/go-sdk/keys"
-	sdkMsg "github.com/binance-chain/go-sdk/types/msg"
-	"github.com/binance-chain/go-sdk/types/tx"
+	// Cosmos-SDK, Tendermint, Ethereum
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	ec "github.com/ethereum/go-ethereum/common"
+	"github.com/tendermint/go-amino"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 
+	// Kava
+	"github.com/kava-labs/go-sdk/client"
+	"github.com/kava-labs/kava/app"
+	bep3 "github.com/kava-labs/kava/x/bep3/types"
+
+	// Bep3-deputy
 	"github.com/binance-chain/bep3-deputy/common"
 	"github.com/binance-chain/bep3-deputy/store"
 	"github.com/binance-chain/bep3-deputy/util"
@@ -24,58 +30,47 @@ import (
 
 var _ common.Executor = &Executor{}
 
+// Executor implements the common executor interface
 type Executor struct {
 	mutex  sync.Mutex
 	Config *util.KavaConfig
 
-	NetworkType types.ChainNetwork
-	RpcClient   rpc.Client
+	NetworkType client.ChainNetwork
 
-	DeputyAddress types.AccAddress
+	Client        *client.KavaClient
+	Cdc           *amino.Codec
+	DeputyAddress sdk.AccAddress
 }
 
-func NewExecutor(rpcAddr string, networkType types.ChainNetwork, cfg *util.KavaConfig) *Executor {
-	keyManager, err := getKeyManager(cfg)
-	if err != nil {
-		panic(fmt.Sprintf("new key manager err, err=%s", err.Error()))
-	}
+// NewExecutor creates a new Executor
+func NewExecutor(rpcAddr string, networkType client.ChainNetwork, cfg *util.KavaConfig) *Executor {
+	cdc := app.MakeCodec()
 
-	rpcClient := rpc.NewRPCClient(rpcAddr, networkType)
-	rpcClient.SetLogger(util.SdkLogger)
+	// Set up Kava HTTP client and set codec
+	kava := client.NewKavaClient(cdc, cfg.Mnemonic, cfg.RpcAddr, networkType)
+	kava.Keybase.SetCodec(cdc)
 
 	return &Executor{
 		Config:        cfg,
-		NetworkType:   networkType,
-		RpcClient:     rpcClient,
-		DeputyAddress: keyManager.GetAddr(),
+		Client:        kava,
+		Cdc:           cdc,
+		DeputyAddress: cfg.DeputyAddr,
 	}
 }
+
+// GetChain gets the chain ID
 func (executor *Executor) GetChain() string {
 	return common.ChainKava
 }
 
-func getKeyManager(config *util.KavaConfig) (keys.KeyManager, error) {
-	var kavaMnemonic string
-	if config.KeyType == util.KeyTypeAWSMnemonic {
-		awsMnemonic, err := util.GetSecret(config.AWSSecretName, config.AWSRegion)
-		if err != nil {
-			return nil, err
-		}
-		kavaMnemonic = awsMnemonic
-	} else {
-		kavaMnemonic = config.Mnemonic
-	}
-
-	return keys.NewMnemonicKeyManager(kavaMnemonic)
-}
-
+// GetBlockAndTxs parses all transactions from a specific block height
 func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, error) {
-	block, err := executor.RpcClient.Block(&height)
+	block, err := executor.Client.HTTP.Block(&height)
 	if err != nil {
 		return nil, err
 	}
 
-	blockResults, err := executor.RpcClient.BlockResults(&height)
+	blockResults, err := executor.Client.HTTP.BlockResults(&height)
 	if err != nil {
 		return nil, err
 	}
@@ -90,17 +85,27 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 		}
 
 		txHash := hex.EncodeToString(t.Hash())
+		// TODO: remove print
+		fmt.Println("Witnessed new tx. Tx hash:", txHash)
 
-		stdTx, err := rpc.ParseTx(tx.Cdc, t)
+		var parsedTx sdk.Tx
+		err := executor.Cdc.UnmarshalBinaryLengthPrefixed(t, &parsedTx)
+		if err != nil {
+			return nil, err
+		}
+
 		if err != nil {
 			util.Logger.Errorf("parse tx error, err=%s", err.Error())
 			continue
 		}
 
-		msgs := stdTx.GetMsgs()
+		msgs := parsedTx.GetMsgs()
 		for _, msg := range msgs {
 			switch realMsg := msg.(type) {
-			case sdkMsg.HTLTMsg:
+			case bep3.MsgCreateAtomicSwap:
+				// TODO: remove print
+				fmt.Println("MsgCreateAtomicSwap case")
+
 				if !realMsg.CrossChain {
 					continue
 				}
@@ -123,7 +128,7 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 					SenderOtherChain: realMsg.SenderOtherChain,
 					OtherChainAddr:   realMsg.RecipientOtherChain,
 					InAmount:         realMsg.ExpectedIncome,
-					OutAmount:        strconv.FormatInt(realMsg.Amount[0].Amount, 10),
+					OutAmount:        strconv.FormatInt(realMsg.Amount[0].Amount.Int64(), 10),
 					OutCoin:          realMsg.Amount[0].Denom,
 					RandomNumberHash: randomNumberHash,
 					ExpireHeight:     realMsg.HeightSpan + height,
@@ -133,9 +138,22 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 					BlockHash: blockHash,
 				}
 				txLogs = append(txLogs, &txLog)
-			case sdkMsg.ClaimHTLTMsg:
+
+				// TODO: Remove. This is for testing.
+				swapIDHashed := ec.HexToHash("09902b62da7927bb399201d0e036938090acf49a131cfc2cb5b1520bee3a6d3d")
+				fmt.Println("swapIDHashed:", swapIDHashed)
+
+				randomNumberHashed := ec.BytesToHash([]byte("100"))
+				fmt.Println("randomNumberHashed:", randomNumberHashed)
+
+				executor.Claim(swapIDHashed, randomNumberHashed)
+
+			case bep3.MsgClaimAtomicSwap:
+				// TODO: remove print
+				fmt.Println("Saw new MsgClaimAtomicSwap")
+
 				signer := msg.GetSigners()[0]
-				swapId := hex.EncodeToString(realMsg.SwapID)
+				swapID := hex.EncodeToString(realMsg.SwapID)
 				randomNum := hex.EncodeToString(realMsg.RandomNumber)
 
 				txLog := store.TxLog{
@@ -144,16 +162,19 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 					TxHash: txHash,
 
 					SenderAddr:   signer.String(),
-					SwapId:       swapId,
+					SwapId:       swapID,
 					RandomNumber: randomNum,
 
 					Height:    height,
 					BlockHash: blockHash,
 				}
 				txLogs = append(txLogs, &txLog)
-			case sdkMsg.RefundHTLTMsg:
+			case bep3.MsgRefundAtomicSwap:
+				// TODO: remove print
+				fmt.Println("Saw new MsgRefundAtomicSwap")
+
 				signer := msg.GetSigners()[0]
-				swapId := hex.EncodeToString(realMsg.SwapID)
+				swapID := hex.EncodeToString(realMsg.SwapID)
 
 				txLog := store.TxLog{
 					Chain:  common.ChainKava,
@@ -161,12 +182,17 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 					TxHash: txHash,
 
 					SenderAddr: signer.String(),
-					SwapId:     swapId,
+					SwapId:     swapID,
 
 					Height:    height,
 					BlockHash: blockHash,
 				}
 				txLogs = append(txLogs, &txLog)
+
+				// TODO: Remove. This is for testing.
+				executor.HTLT(ec.HexToHash("e894f9ca875259c266c0a29ae6636ec37b1226625bca898fd360bce6a558d33d"), 100, 20,
+					"kava15qdefkmwswysgg4qxgqpqr35k3m49pkx2jdfnw", "0x9eB05a790e2De0a047a57a22199D8CccEA6d6D5A",
+					"0x9eB05a790e2De0a047a57a22199D8CccEA6d6D5A", big.NewInt(1000))
 			default:
 			}
 		}
@@ -183,153 +209,184 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 	return blockAndTxLogs, nil
 }
 
-func (executor *Executor) HTLT(randomNumberHash ec.Hash, timestamp int64, heightSpan int64, recipientAddr string, otherChainSenderAddr string, otherChainRecipientAddr string, outAmount *big.Int) (string, *common.Error) {
+// HTLT sends a transaction containing a MsgCreateAtomicSwap to kava
+func (executor *Executor) HTLT(randomNumberHash ec.Hash, timestamp int64, heightSpan int64, recipientAddr string,
+	otherChainSenderAddr string, otherChainRecipientAddr string, outAmount *big.Int) (string, *common.Error) {
+
 	executor.mutex.Lock()
 	defer executor.mutex.Unlock()
 
-	keyManager, err := getKeyManager(executor.Config)
-	if err != nil {
-		return "", common.NewError(err, false)
-	}
-	executor.RpcClient.SetKeyManager(keyManager)
-	defer executor.RpcClient.SetKeyManager(nil)
+	// TODO: why is Binance setting here instead of globally? this applies to claim/refund as well
+	// executor.RpcClient.SetKeyManager(keyManager)
+	// defer executor.RpcClient.SetKeyManager(nil)
 
-	bep2Addr, err := types.AccAddressFromBech32(recipientAddr)
+	recipient, err := sdk.AccAddressFromBech32(recipientAddr)
 	if err != nil {
 		return "", common.NewError(err, false)
 	}
 
 	if !outAmount.IsInt64() {
 		return "", common.NewError(
-			errors.New(fmt.Sprintf("out amount(%s) is not int64", outAmount.String())), false)
+			fmt.Errorf(fmt.Sprintf("out amount(%s) is not int64", outAmount.String())), false)
 	}
 
-	outCoin := types.Coin{
-		Denom:  executor.Config.Symbol,
-		Amount: outAmount.Int64(),
+	coinSymbol := "btc" // TODO: use executor.Config.Symbol
+	outCoin := sdk.NewCoins(sdk.NewInt64Coin(coinSymbol, outAmount.Int64()))
+
+	if executor.Client.Keybase == nil {
+		return "", common.NewError(errors.New("Err: key missing"), false)
 	}
 
-	res, err := executor.RpcClient.HTLT(bep2Addr, otherChainRecipientAddr, otherChainSenderAddr, randomNumberHash[:],
-		timestamp, types.Coins{outCoin}, "", heightSpan, true, rpc.Sync)
+	fromAddr := executor.Client.Keybase.GetAddr()
+
+	createMsg := bep3.NewMsgCreateAtomicSwap(
+		fromAddr,
+		recipient,
+		otherChainRecipientAddr,
+		otherChainSenderAddr,
+		cmn.HexBytes(randomNumberHash.Bytes()),
+		timestamp,
+		outCoin,
+		fmt.Sprintf("%d%s", outAmount.Int64(), coinSymbol), //TODO: use coin[0].String()?
+		heightSpan,
+		true,
+	)
+
+	// TODO: are 'options...' required?
+	res, err := executor.Broadcast(createMsg, Sync)
 	if err != nil {
-		return "", common.NewError(err, isInvalidSequenceError(err.Error()))
+		return "", common.NewError(err, false) // TODO: 'true'?
 	}
-	if res.Code != 0 {
-		return "", common.NewError(errors.New(res.Log), isInvalidSequenceError(res.Log))
-	}
+
+	// TODO: remove print
+	fmt.Println("Result of msg broadcast:", res)
+	fmt.Println("Tx hash:", res.Hash.String())
+
 	return res.Hash.String(), nil
 }
 
-func isInvalidSequenceError(err string) bool {
-	return strings.Contains(err, "Invalid sequence")
-}
-
+// GetFetchInterval gets the duration between fetches
 func (executor *Executor) GetFetchInterval() time.Duration {
 	return time.Duration(executor.Config.FetchInterval) * time.Second
 }
 
+// Claim sends a MsgClaimAtomicSwap to kava
 func (executor *Executor) Claim(swapId ec.Hash, randomNumber ec.Hash) (string, *common.Error) {
 	executor.mutex.Lock()
 	defer executor.mutex.Unlock()
 
-	keyManager, err := getKeyManager(executor.Config)
+	if executor.Client.Keybase == nil {
+		return "", common.NewError(errors.New("Err: key missing"), false)
+	}
+
+	claimMsg := bep3.NewMsgClaimAtomicSwap(
+		executor.DeputyAddress,
+		cmn.HexBytes(swapId.Bytes()),
+		cmn.HexBytes(randomNumber.Bytes()),
+	)
+
+	res, err := executor.Broadcast(claimMsg, Sync)
 	if err != nil {
 		return "", common.NewError(err, false)
 	}
-	executor.RpcClient.SetKeyManager(keyManager)
-	defer executor.RpcClient.SetKeyManager(nil)
 
-	res, err := executor.RpcClient.ClaimHTLT(swapId[:], randomNumber[:], rpc.Sync)
-	if err != nil {
-		return "", common.NewError(err, isInvalidSequenceError(err.Error()))
-	}
-	if res.Code != 0 {
-		return "", common.NewError(errors.New(res.Log), isInvalidSequenceError(res.Log))
-	}
-	return res.Hash.String(), nil
+	// TODO: remove print
+	fmt.Println("Result of msg broadcast:", res)
+	fmt.Println("Tx hash:", res.Hash.String())
+
+	return "", nil
 }
 
+// Refund sends a MsgRefundAtomicSwap to kava
 func (executor *Executor) Refund(swapId ec.Hash) (string, *common.Error) {
 	executor.mutex.Lock()
 	defer executor.mutex.Unlock()
 
-	keyManager, err := getKeyManager(executor.Config)
+	if executor.Client.Keybase == nil {
+		return "", common.NewError(errors.New("Err: key missing"), false)
+	}
+
+	refundMsg := bep3.NewMsgRefundAtomicSwap(
+		executor.DeputyAddress,
+		cmn.HexBytes(swapId.Bytes()),
+	)
+
+	res, err := executor.Broadcast(refundMsg, Sync)
 	if err != nil {
 		return "", common.NewError(err, false)
 	}
-	executor.RpcClient.SetKeyManager(keyManager)
-	defer executor.RpcClient.SetKeyManager(nil)
 
-	res, err := executor.RpcClient.RefundHTLT(swapId[:], rpc.Sync)
-	if err != nil {
-		return "", common.NewError(err, isInvalidSequenceError(err.Error()))
-	}
-	if res.Code != 0 {
-		return "", common.NewError(errors.New(res.Log), isInvalidSequenceError(res.Log))
-	}
-	return res.Hash.String(), nil
+	// TODO: remove print
+	fmt.Println("Result of msg broadcast:", res)
+	fmt.Println("Tx hash:", res.Hash.String())
+
+	return "", nil
 }
 
+// GetSentTxStatus gets a sent transaction's status
 func (executor *Executor) GetSentTxStatus(hash string) store.TxStatus {
 	bz, err := hex.DecodeString(hash)
 	if err != nil {
 		return store.TxSentStatusNotFound
 	}
-	txResult, err := executor.RpcClient.Tx(bz, false)
+	txResult, err := executor.Client.HTTP.Tx(bz, false)
 	if err != nil {
 		return store.TxSentStatusNotFound
 	}
 	if txResult.TxResult.Code == 0 {
 		return store.TxSentStatusSuccess
-	} else {
-		return store.TxSentStatusFailed
 	}
+	return store.TxSentStatusFailed
 }
 
-func (executor *Executor) QuerySwap(swapId []byte) (swap types.AtomicSwap, isExist bool, err error) {
-	swap, err = executor.RpcClient.GetSwapByID(swapId)
+// QuerySwap queries kava for an AtomicSwap
+func (executor *Executor) QuerySwap(swapID []byte) (swap bep3.AtomicSwap, isExist bool, err error) {
+	swap, err = executor.Client.GetSwapByID(swapID)
 	if err != nil {
 		//if strings.Contains(err.Error(), "No matched swap with swapID") {
 		if strings.Contains(err.Error(), "zero records") {
-			return types.AtomicSwap{}, false, nil
-		} else {
-			return types.AtomicSwap{}, false, err
+			return bep3.AtomicSwap{}, false, nil
 		}
+		return bep3.AtomicSwap{}, false, err
 	}
 
 	return swap, true, nil
 }
 
-func (executor *Executor) HasSwap(swapId ec.Hash) (bool, error) {
-	_, isExist, err := executor.QuerySwap(swapId[:])
+// HasSwap returns true if an AtomicSwap with this ID exists on kava
+func (executor *Executor) HasSwap(swapID ec.Hash) (bool, error) {
+	_, isExist, err := executor.QuerySwap(swapID[:])
 	return isExist, err
 }
 
-func (executor *Executor) GetSwap(swapId ec.Hash) (*common.SwapRequest, error) {
-	swap, isExist, err := executor.QuerySwap(swapId[:])
+// GetSwap gets an AtomicSwap by its ID
+func (executor *Executor) GetSwap(swapID ec.Hash) (*common.SwapRequest, error) {
+	swap, isExist, err := executor.QuerySwap(swapID[:])
 	if err != nil {
 		return nil, err
 	}
 	if !isExist {
-		return nil, fmt.Errorf("swap does not exist, swapId=%s", swapId.String())
+		return nil, fmt.Errorf("swap does not exist, swapId=%s", swapID.String())
 	}
-	if len(swap.OutAmount) != 1 {
-		return nil, fmt.Errorf("swap request has multi coins, coin_types=%d", swap.OutAmount.Len())
+	if len(swap.Amount) != 1 {
+		return nil, fmt.Errorf("swap request has multi coins, coin_types=%d", swap.Amount.Len())
 	}
 
 	return &common.SwapRequest{
-		Id:                  swapId,
+		Id:                  swapID,
 		RandomNumberHash:    ec.BytesToHash(swap.RandomNumberHash),
 		ExpireHeight:        swap.ExpireHeight,
-		SenderAddress:       swap.From.String(),
-		RecipientAddress:    swap.To.String(),
-		OutAmount:           big.NewInt(swap.OutAmount[0].Amount),
-		RecipientOtherChain: swap.RecipientOtherChain,
+		SenderAddress:       swap.Sender.String(),
+		RecipientAddress:    swap.Recipient.String(),
+		OutAmount:           big.NewInt(swap.Amount[0].Amount.Int64()),
+		RecipientOtherChain: swap.SenderOtherChain,
+		//TODO: RecipientOtherChain: swap.RecipientOtherChain,
 	}, nil
 }
 
+// GetHeight gets the current block height of the kava blockchain
 func (executor *Executor) GetHeight() (int64, error) {
-	status, err := executor.RpcClient.Status()
+	status, err := executor.Client.HTTP.Status()
 	if err != nil {
 		return 0, err
 	}
@@ -337,6 +394,7 @@ func (executor *Executor) GetHeight() (int64, error) {
 	return status.SyncInfo.LatestBlockHeight, nil
 }
 
+// Claimable returns true is an AtomicSwap is currently claimable
 func (executor *Executor) Claimable(swapId ec.Hash) (bool, error) {
 	swap, isExist, err := executor.QuerySwap(swapId[:])
 	if err != nil {
@@ -346,18 +404,18 @@ func (executor *Executor) Claimable(swapId ec.Hash) (bool, error) {
 		return false, nil
 	}
 
-	status, err := executor.RpcClient.Status()
+	status, err := executor.Client.HTTP.Status()
 	if err != nil {
 		return false, err
 	}
 
-	if swap.Status == types.Open && status.SyncInfo.LatestBlockHeight < swap.ExpireHeight {
+	if swap.Status == bep3.Open && status.SyncInfo.LatestBlockHeight < swap.ExpireHeight {
 		return true, nil
-	} else {
-		return false, nil
 	}
+	return false, nil
 }
 
+// Refundable returns true is an AtomicSwap is currently refundable
 func (executor *Executor) Refundable(swapId ec.Hash) (bool, error) {
 	swap, isExist, err := executor.QuerySwap(swapId[:])
 	if err != nil {
@@ -367,102 +425,96 @@ func (executor *Executor) Refundable(swapId ec.Hash) (bool, error) {
 		return false, nil
 	}
 
-	status, err := executor.RpcClient.Status()
+	status, err := executor.Client.HTTP.Status()
 	if err != nil {
 		return false, err
 	}
 
-	if swap.Status == types.Open && status.SyncInfo.LatestBlockHeight >= swap.ExpireHeight {
+	if swap.Status == bep3.Open && status.SyncInfo.LatestBlockHeight >= swap.ExpireHeight {
 		return true, nil
-	} else {
-		return false, nil
 	}
+	return false, nil
 }
 
+// GetBalance gets the deputy's current kava balance
 func (executor *Executor) GetBalance() (*big.Int, error) {
-	account, err := executor.RpcClient.GetAccount(executor.DeputyAddress)
+	deputy, err := executor.Client.GetAccount(executor.DeputyAddress)
 	if err != nil {
 		return big.NewInt(0), err
 	}
 
-	if account == nil || account.GetCoins() == nil {
-		return big.NewInt(0), errors.New("get nil account")
+	if deputy.Address.Empty() {
+		return big.NewInt(0), errors.New("invalid deputy address")
 	}
 
-	tokenBalance := account.GetCoins().AmountOf(executor.Config.Symbol)
-	return big.NewInt(tokenBalance), nil
-}
-
-func (executor *Executor) Balance() ([]types.TokenBalance, error) {
-	account, err := executor.RpcClient.GetAccount(executor.DeputyAddress)
-	if err != nil {
-		return nil, err
-	}
-	coins := account.GetCoins()
-
-	symbols := make([]string, 0, len(coins))
-	balances := make([]types.TokenBalance, 0, len(coins))
-	for _, coin := range coins {
-		symbols = append(symbols, coin.Denom)
-		// count locked and frozen coins
-		var locked, frozen int64
-		acc := account.(types.NamedAccount)
-		if acc != nil {
-			locked = acc.GetLockedCoins().AmountOf(coin.Denom)
-			frozen = acc.GetFrozenCoins().AmountOf(coin.Denom)
+	for _, coin := range deputy.Coins {
+		// TODO: Confirm that executor.Config.Symbol is lowercase
+		if coin.Denom == executor.Config.Symbol {
+			return big.NewInt(coin.Amount.Int64()), nil
 		}
-		balances = append(balances, types.TokenBalance{
-			Symbol: coin.Denom,
-			Free:   types.Fixed8(coins.AmountOf(coin.Denom)),
-			Locked: types.Fixed8(locked),
-			Frozen: types.Fixed8(frozen),
-		})
 	}
-	return balances, nil
+
+	return big.NewInt(0), fmt.Errorf(fmt.Sprintf("deputy doesn't have any %s", executor.Config.Symbol))
 }
 
+// GetDeputyAddress gets the deputy's address from the config
 func (executor *Executor) GetDeputyAddress() string {
 	return executor.Config.DeputyAddr.String()
 }
 
+// CalcSwapId calculates the swap ID for a given random number hash, sender, and sender other chain
 func (executor *Executor) CalcSwapId(randomNumberHash ec.Hash, sender string, senderOtherChain string) ([]byte, error) {
-	bep2Addr, err := types.AccAddressFromBech32(sender)
+	senderAddr, err := sdk.AccAddressFromBech32(sender)
 	if err != nil {
 		return nil, err
 	}
-	return sdkMsg.CalculateSwapID(randomNumberHash[:], bep2Addr, senderOtherChain), nil
+	return bep3.CalculateSwapID(randomNumberHash[:], senderAddr, senderOtherChain), nil
 }
 
+// IsSameAddress checks for equality between two addresses
 func (executor *Executor) IsSameAddress(addrA string, addrB string) bool {
 	return strings.ToLower(addrA) == strings.ToLower(addrB)
 }
 
+// GetStatus gets the total coin balances of the deputy
 func (executor *Executor) GetStatus() (interface{}, error) {
 	kavaStatus := &common.KavaStatus{}
-	kavaBalance, err := executor.Balance()
+
+	deputy, err := executor.Client.GetAccount(executor.DeputyAddress)
 	if err != nil {
 		return nil, err
 	}
-	kavaStatus.Balance = kavaBalance
+
+	if deputy.Address.Empty() {
+		return big.NewInt(0), errors.New("invalid deputy address")
+	}
+
+	kavaStatus.Balance = sdk.NewCoins(deputy.Coins...)
 	return kavaStatus, nil
 }
 
+// GetBalanceAlertMsg constructs an alert message if the deputy's balance is low
 func (executor *Executor) GetBalanceAlertMsg() (string, error) {
 	if executor.Config.KavaBalanceAlertThreshold == 0 && executor.Config.TokenBalanceAlertThreshold == 0 {
 		return "", nil
 	}
 
-	account, err := executor.RpcClient.GetAccount(executor.DeputyAddress)
+	deputy, err := executor.Client.GetAccount(executor.DeputyAddress)
 	if err != nil {
 		return "", err
 	}
 
-	if account == nil || account.GetCoins() == nil {
-		return "", errors.New("get nil account")
+	if deputy.Address.Empty() {
+		return "", errors.New("invalid deputy address")
 	}
 
-	kavaBalance := account.GetCoins().AmountOf(common.KAVASymbol)
-	tokenBalance := account.GetCoins().AmountOf(executor.Config.Symbol)
+	balances := sdk.NewCoins(deputy.Coins...)
+
+	// TODO: token symbols are both "KAVA", which doesn't work
+	// kavaBalance := balances.AmountOf(common.KAVASymbol).Int64()
+	// tokenBalance := balances.AmountOf(executor.Config.Symbol).Int64()
+	kavaBalance := balances.AmountOf("ukava").Int64()
+	tokenBalance := balances.AmountOf("btc").Int64()
 
 	alertMsg := ""
 	if executor.Config.KavaBalanceAlertThreshold > 0 && kavaBalance < executor.Config.KavaBalanceAlertThreshold {
@@ -475,3 +527,34 @@ func (executor *Executor) GetBalanceAlertMsg() (string, error) {
 
 	return alertMsg, nil
 }
+
+// Broadcast sends a transaction to Kava containing the given msg
+func (executor *Executor) Broadcast(m sdk.Msg, syncType SyncType) (*ctypes.ResultBroadcastTx, *common.Error) {
+	res, err := executor.Client.broadcast(m, syncType)
+	if err != nil {
+		return &ctypes.ResultBroadcastTx{}, common.NewError(err, isInvalidSequenceError(err.Error()))
+	}
+	if res.Code != 0 {
+		return &ctypes.ResultBroadcastTx{}, common.NewError(errors.New(res.Log), isInvalidSequenceError(res.Log))
+	}
+	return res, nil
+}
+
+func isInvalidSequenceError(err string) bool {
+	return strings.Contains(err, "Invalid sequence")
+}
+
+// TODO: is this required
+// func getKeyManager(config *util.KavaConfig) (KeyManager, error) {
+// 	var kavaMnemonic string
+// 	if config.KeyType == util.KeyTypeAWSMnemonic {
+// 		awsMnemonic, err := util.GetSecret(config.AWSSecretName, config.AWSRegion)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		kavaMnemonic = awsMnemonic
+// 	} else {
+// 		kavaMnemonic = config.Mnemonic
+// 	}
+// 	return NewMnemonicKeyManager(kavaMnemonic)
+// }
