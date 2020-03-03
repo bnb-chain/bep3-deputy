@@ -11,6 +11,7 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/kava-labs/go-sdk/client"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -154,8 +155,7 @@ func main() {
 	store.InitTables(db)
 
 	bnbExecutor := bnb.NewExecutor(config.BnbConfig.RpcAddr, types.ChainNetwork(bnbNetwork), config.BnbConfig)
-	// TODO:  kava.ChainNetwork(kavaNetwork) should be imported from kava's go-sdk
-	kavaExecutor := kava.NewExecutor(config.KavaConfig.RpcAddr, kava.ChainNetwork(kavaNetwork), config.KavaConfig)
+	kavaExecutor := kava.NewExecutor(config.KavaConfig.RpcAddr, client.ChainNetwork(kavaNetwork), config.KavaConfig)
 
 	dp := deputy.NewDeputy(db, config, bnbExecutor, kavaExecutor)
 	dp.Start()

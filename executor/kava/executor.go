@@ -143,7 +143,7 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 				swapIDHashed := ec.HexToHash("09902b62da7927bb399201d0e036938090acf49a131cfc2cb5b1520bee3a6d3d")
 				fmt.Println("swapIDHashed:", swapIDHashed)
 
-				randomNumberHashed := ec.BytesToHash([]byte("100"))
+				randomNumberHashed := ec.BytesToHash([]byte("15"))
 				fmt.Println("randomNumberHashed:", randomNumberHashed)
 
 				executor.Claim(swapIDHashed, randomNumberHashed)
@@ -190,7 +190,8 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 				txLogs = append(txLogs, &txLog)
 
 				// TODO: Remove. This is for testing.
-				executor.HTLT(ec.HexToHash("e894f9ca875259c266c0a29ae6636ec37b1226625bca898fd360bce6a558d33d"), 100, 20,
+				//  kvcli q bep3 calc-rnh 15 100 -> "2219edb58f397dee8cdefb5bc05749353e40c47dfcf0654a2b0318912a0dc270"
+				executor.HTLT(ec.HexToHash("2219edb58f397dee8cdefb5bc05749353e40c47dfcf0654a2b0318912a0dc270"), 100, 80,
 					"kava15qdefkmwswysgg4qxgqpqr35k3m49pkx2jdfnw", "0x9eB05a790e2De0a047a57a22199D8CccEA6d6D5A",
 					"0x9eB05a790e2De0a047a57a22199D8CccEA6d6D5A", big.NewInt(1000))
 			default:
@@ -253,7 +254,7 @@ func (executor *Executor) HTLT(randomNumberHash ec.Hash, timestamp int64, height
 	)
 
 	// TODO: are 'options...' required?
-	res, err := executor.Broadcast(createMsg, Sync)
+	res, err := executor.Broadcast(createMsg, client.Sync)
 	if err != nil {
 		return "", common.NewError(err, false) // TODO: 'true'?
 	}
@@ -279,13 +280,20 @@ func (executor *Executor) Claim(swapId ec.Hash, randomNumber ec.Hash) (string, *
 		return "", common.NewError(errors.New("Err: key missing"), false)
 	}
 
+	// cmn.HexBytes(randomNumber.Bytes()),
+	// randNumb := byte(randomNumber.String())
+	randomNumberStr := randomNumber.String()
+	fmt.Println("randomNumberStr:", randomNumberStr)
+	randomNumberByte := []byte(randomNumberStr)
+	fmt.Println("randomNumberByte:", randomNumberByte)
+
 	claimMsg := bep3.NewMsgClaimAtomicSwap(
 		executor.DeputyAddress,
 		cmn.HexBytes(swapId.Bytes()),
-		cmn.HexBytes(randomNumber.Bytes()),
+		cmn.HexBytes(randomNumberByte), // TODO: type casting here is wrong
 	)
 
-	res, err := executor.Broadcast(claimMsg, Sync)
+	res, err := executor.Broadcast(claimMsg, client.Sync)
 	if err != nil {
 		return "", common.NewError(err, false)
 	}
@@ -311,7 +319,7 @@ func (executor *Executor) Refund(swapId ec.Hash) (string, *common.Error) {
 		cmn.HexBytes(swapId.Bytes()),
 	)
 
-	res, err := executor.Broadcast(refundMsg, Sync)
+	res, err := executor.Broadcast(refundMsg, client.Sync)
 	if err != nil {
 		return "", common.NewError(err, false)
 	}
@@ -529,8 +537,8 @@ func (executor *Executor) GetBalanceAlertMsg() (string, error) {
 }
 
 // Broadcast sends a transaction to Kava containing the given msg
-func (executor *Executor) Broadcast(m sdk.Msg, syncType SyncType) (*ctypes.ResultBroadcastTx, *common.Error) {
-	res, err := executor.Client.broadcast(m, syncType)
+func (executor *Executor) Broadcast(m sdk.Msg, syncType client.SyncType) (*ctypes.ResultBroadcastTx, *common.Error) {
+	res, err := executor.Client.Broadcast(m, syncType)
 	if err != nil {
 		return &ctypes.ResultBroadcastTx{}, common.NewError(err, isInvalidSequenceError(err.Error()))
 	}
@@ -543,18 +551,3 @@ func (executor *Executor) Broadcast(m sdk.Msg, syncType SyncType) (*ctypes.Resul
 func isInvalidSequenceError(err string) bool {
 	return strings.Contains(err, "Invalid sequence")
 }
-
-// TODO: is this required
-// func getKeyManager(config *util.KavaConfig) (KeyManager, error) {
-// 	var kavaMnemonic string
-// 	if config.KeyType == util.KeyTypeAWSMnemonic {
-// 		awsMnemonic, err := util.GetSecret(config.AWSSecretName, config.AWSRegion)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		kavaMnemonic = awsMnemonic
-// 	} else {
-// 		kavaMnemonic = config.Mnemonic
-// 	}
-// 	return NewMnemonicKeyManager(kavaMnemonic)
-// }
