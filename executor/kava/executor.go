@@ -1,6 +1,7 @@
 package kava
 
 import (
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -140,12 +141,8 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 				txLogs = append(txLogs, &txLog)
 
 				// TODO: Remove. This is for testing.
-				swapIDHashed := ec.HexToHash("09902b62da7927bb399201d0e036938090acf49a131cfc2cb5b1520bee3a6d3d")
-				fmt.Println("swapIDHashed:", swapIDHashed)
-
+				swapIDHashed := ec.HexToHash("e878263268853c56987835218621bda1147f4a04ecec0d092cc84deedce3dc44")
 				randomNumberHashed := ec.BytesToHash([]byte("15"))
-				fmt.Println("randomNumberHashed:", randomNumberHashed)
-
 				executor.Claim(swapIDHashed, randomNumberHashed)
 
 			case bep3.MsgClaimAtomicSwap:
@@ -248,7 +245,7 @@ func (executor *Executor) HTLT(randomNumberHash ec.Hash, timestamp int64, height
 		cmn.HexBytes(randomNumberHash.Bytes()),
 		timestamp,
 		outCoin,
-		fmt.Sprintf("%d%s", outAmount.Int64(), coinSymbol), //TODO: use coin[0].String()?
+		fmt.Sprintf("%d%s", outAmount.Int64(), coinSymbol),
 		heightSpan,
 		true,
 	)
@@ -280,17 +277,12 @@ func (executor *Executor) Claim(swapId ec.Hash, randomNumber ec.Hash) (string, *
 		return "", common.NewError(errors.New("Err: key missing"), false)
 	}
 
-	// cmn.HexBytes(randomNumber.Bytes()),
-	// randNumb := byte(randomNumber.String())
-	randomNumberStr := randomNumber.String()
-	fmt.Println("randomNumberStr:", randomNumberStr)
-	randomNumberByte := []byte(randomNumberStr)
-	fmt.Println("randomNumberByte:", randomNumberByte)
+	trimmedRandomNumber := bytes.Trim(randomNumber.Bytes(), "\x00")
 
 	claimMsg := bep3.NewMsgClaimAtomicSwap(
 		executor.DeputyAddress,
 		cmn.HexBytes(swapId.Bytes()),
-		cmn.HexBytes(randomNumberByte), // TODO: type casting here is wrong
+		cmn.HexBytes(trimmedRandomNumber),
 	)
 
 	res, err := executor.Broadcast(claimMsg, client.Sync)
