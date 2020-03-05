@@ -378,12 +378,9 @@ func ParseConfigFromJson(content string) *Config {
 }
 
 func ParseConfigFromFile(filePath string) *Config {
-	// TODO: set Kava prefixes elsewhere
-	// --------------------------------------
 	kavaConfig := sdk.GetConfig()
 	app.SetBech32AddressPrefixes(kavaConfig)
 	kavaConfig.Seal()
-	// --------------------------------------
 
 	bz, err := ioutil.ReadFile(filePath)
 	if err != nil {
