@@ -16,7 +16,6 @@ import (
 	ec "github.com/ethereum/go-ethereum/common"
 	"github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 
 	// Kava
 	"github.com/kava-labs/go-sdk/client"
@@ -86,8 +85,6 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 		}
 
 		txHash := hex.EncodeToString(t.Hash())
-		// TODO: remove print
-		fmt.Println("Witnessed new tx. Tx hash:", txHash)
 
 		var parsedTx sdk.Tx
 		err := executor.Cdc.UnmarshalBinaryLengthPrefixed(t, &parsedTx)
@@ -104,9 +101,7 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 		for _, msg := range msgs {
 			switch realMsg := msg.(type) {
 			case bep3.MsgCreateAtomicSwap:
-				// TODO: remove print
 				fmt.Println("MsgCreateAtomicSwap case")
-
 				if !realMsg.CrossChain {
 					continue
 				}
@@ -120,7 +115,7 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 
 				txLog := store.TxLog{
 					Chain:  common.ChainKava,
-					TxType: store.TxTypeBEP2HTLT,
+					TxType: store.TxTypeOtherHTLT,
 					TxHash: txHash,
 
 					SwapId:           strings.ReplaceAll(txResult.Log, "Msg 0: swapID: ", ""),
@@ -139,23 +134,15 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 					BlockHash: blockHash,
 				}
 				txLogs = append(txLogs, &txLog)
-
-				// TODO: Remove. This is for testing.
-				swapIDHashed := ec.HexToHash("e878263268853c56987835218621bda1147f4a04ecec0d092cc84deedce3dc44")
-				randomNumberHashed := ec.BytesToHash([]byte("15"))
-				executor.Claim(swapIDHashed, randomNumberHashed)
-
 			case bep3.MsgClaimAtomicSwap:
-				// TODO: remove print
 				fmt.Println("Saw new MsgClaimAtomicSwap")
-
 				signer := msg.GetSigners()[0]
 				swapID := hex.EncodeToString(realMsg.SwapID)
 				randomNum := hex.EncodeToString(realMsg.RandomNumber)
 
 				txLog := store.TxLog{
 					Chain:  common.ChainKava,
-					TxType: store.TxTypeBEP2Claim,
+					TxType: store.TxTypeOtherClaim,
 					TxHash: txHash,
 
 					SenderAddr:   signer.String(),
@@ -167,15 +154,13 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 				}
 				txLogs = append(txLogs, &txLog)
 			case bep3.MsgRefundAtomicSwap:
-				// TODO: remove print
 				fmt.Println("Saw new MsgRefundAtomicSwap")
-
 				signer := msg.GetSigners()[0]
 				swapID := hex.EncodeToString(realMsg.SwapID)
 
 				txLog := store.TxLog{
 					Chain:  common.ChainKava,
-					TxType: store.TxTypeBEP2Refund,
+					TxType: store.TxTypeOtherRefund,
 					TxHash: txHash,
 
 					SenderAddr: signer.String(),
@@ -185,12 +170,6 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 					BlockHash: blockHash,
 				}
 				txLogs = append(txLogs, &txLog)
-
-				// TODO: Remove. This is for testing.
-				//  kvcli q bep3 calc-rnh 15 100 -> "2219edb58f397dee8cdefb5bc05749353e40c47dfcf0654a2b0318912a0dc270"
-				executor.HTLT(ec.HexToHash("2219edb58f397dee8cdefb5bc05749353e40c47dfcf0654a2b0318912a0dc270"), 100, 80,
-					"kava15qdefkmwswysgg4qxgqpqr35k3m49pkx2jdfnw", "0x9eB05a790e2De0a047a57a22199D8CccEA6d6D5A",
-					"0x9eB05a790e2De0a047a57a22199D8CccEA6d6D5A", big.NewInt(1000))
 			default:
 			}
 		}
@@ -210,7 +189,7 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 // HTLT sends a transaction containing a MsgCreateAtomicSwap to kava
 func (executor *Executor) HTLT(randomNumberHash ec.Hash, timestamp int64, heightSpan int64, recipientAddr string,
 	otherChainSenderAddr string, otherChainRecipientAddr string, outAmount *big.Int) (string, *common.Error) {
-
+	fmt.Println("Kava Executor HTLT()")
 	executor.mutex.Lock()
 	defer executor.mutex.Unlock()
 
@@ -228,8 +207,7 @@ func (executor *Executor) HTLT(randomNumberHash ec.Hash, timestamp int64, height
 			fmt.Errorf(fmt.Sprintf("out amount(%s) is not int64", outAmount.String())), false)
 	}
 
-	coinSymbol := "btc" // TODO: use executor.Config.Symbol
-	outCoin := sdk.NewCoins(sdk.NewInt64Coin(coinSymbol, outAmount.Int64()))
+	outCoin := sdk.NewCoins(sdk.NewInt64Coin(executor.Config.Symbol, outAmount.Int64()))
 
 	if executor.Client.Keybase == nil {
 		return "", common.NewError(errors.New("Err: key missing"), false)
@@ -245,20 +223,18 @@ func (executor *Executor) HTLT(randomNumberHash ec.Hash, timestamp int64, height
 		cmn.HexBytes(randomNumberHash.Bytes()),
 		timestamp,
 		outCoin,
-		fmt.Sprintf("%d%s", outAmount.Int64(), coinSymbol),
+		fmt.Sprintf("%d%s", outAmount.Int64(), executor.Config.Symbol),
 		heightSpan,
 		true,
 	)
 
-	// TODO: are 'options...' required?
-	res, err := executor.Broadcast(createMsg, client.Sync)
+	res, err := executor.Client.Broadcast(createMsg, client.Sync)
 	if err != nil {
-		return "", common.NewError(err, false) // TODO: 'true'?
+		return "", common.NewError(err, isInvalidSequenceError(err.Error()))
 	}
-
-	// TODO: remove print
-	fmt.Println("Result of msg broadcast:", res)
-	fmt.Println("Tx hash:", res.Hash.String())
+	if res.Code != 0 {
+		return "", common.NewError(errors.New(res.Log), isInvalidSequenceError(res.Log))
+	}
 
 	return res.Hash.String(), nil
 }
@@ -270,6 +246,7 @@ func (executor *Executor) GetFetchInterval() time.Duration {
 
 // Claim sends a MsgClaimAtomicSwap to kava
 func (executor *Executor) Claim(swapId ec.Hash, randomNumber ec.Hash) (string, *common.Error) {
+	fmt.Println("Kava Executor Claim()")
 	executor.mutex.Lock()
 	defer executor.mutex.Unlock()
 
@@ -285,20 +262,22 @@ func (executor *Executor) Claim(swapId ec.Hash, randomNumber ec.Hash) (string, *
 		cmn.HexBytes(trimmedRandomNumber),
 	)
 
-	res, err := executor.Broadcast(claimMsg, client.Sync)
+	res, err := executor.Client.Broadcast(claimMsg, client.Sync)
 	if err != nil {
-		return "", common.NewError(err, false)
+		return "", common.NewError(err, isInvalidSequenceError(err.Error()))
+	}
+	if res.Code != 0 {
+		return "", common.NewError(errors.New(res.Log), isInvalidSequenceError(res.Log))
 	}
 
-	// TODO: remove print
-	fmt.Println("Result of msg broadcast:", res)
-	fmt.Println("Tx hash:", res.Hash.String())
+	fmt.Println("KavaExecutor Claim() tx hash:", res.Hash.String())
 
 	return "", nil
 }
 
 // Refund sends a MsgRefundAtomicSwap to kava
 func (executor *Executor) Refund(swapId ec.Hash) (string, *common.Error) {
+	fmt.Println("Kava Executor Refund()")
 	executor.mutex.Lock()
 	defer executor.mutex.Unlock()
 
@@ -311,14 +290,15 @@ func (executor *Executor) Refund(swapId ec.Hash) (string, *common.Error) {
 		cmn.HexBytes(swapId.Bytes()),
 	)
 
-	res, err := executor.Broadcast(refundMsg, client.Sync)
+	res, err := executor.Client.Broadcast(refundMsg, client.Sync)
 	if err != nil {
-		return "", common.NewError(err, false)
+		return "", common.NewError(err, isInvalidSequenceError(err.Error()))
+	}
+	if res.Code != 0 {
+		return "", common.NewError(errors.New(res.Log), isInvalidSequenceError(res.Log))
 	}
 
-	// TODO: remove print
-	fmt.Println("Result of msg broadcast:", res)
-	fmt.Println("Tx hash:", res.Hash.String())
+	fmt.Println("KavaExecutor Refund() tx hash:", res.Hash.String())
 
 	return "", nil
 }
@@ -340,11 +320,11 @@ func (executor *Executor) GetSentTxStatus(hash string) store.TxStatus {
 }
 
 // QuerySwap queries kava for an AtomicSwap
-func (executor *Executor) QuerySwap(swapID []byte) (swap bep3.AtomicSwap, isExist bool, err error) {
-	swap, err = executor.Client.GetSwapByID(swapID)
+func (executor *Executor) QuerySwap(swapId []byte) (swap bep3.AtomicSwap, isExist bool, err error) {
+	fmt.Println("Kava Executor QuerySwap()")
+	swap, err = executor.Client.GetSwapByID(cmn.HexBytes(swapId))
 	if err != nil {
-		//if strings.Contains(err.Error(), "No matched swap with swapID") {
-		if strings.Contains(err.Error(), "zero records") {
+		if strings.Contains(err.Error(), "Not found") {
 			return bep3.AtomicSwap{}, false, nil
 		}
 		return bep3.AtomicSwap{}, false, err
@@ -354,26 +334,28 @@ func (executor *Executor) QuerySwap(swapID []byte) (swap bep3.AtomicSwap, isExis
 }
 
 // HasSwap returns true if an AtomicSwap with this ID exists on kava
-func (executor *Executor) HasSwap(swapID ec.Hash) (bool, error) {
-	_, isExist, err := executor.QuerySwap(swapID[:])
+func (executor *Executor) HasSwap(swapId ec.Hash) (bool, error) {
+	fmt.Println("Kava Executor HasSwap()")
+	_, isExist, err := executor.QuerySwap(swapId.Bytes())
 	return isExist, err
 }
 
 // GetSwap gets an AtomicSwap by its ID
-func (executor *Executor) GetSwap(swapID ec.Hash) (*common.SwapRequest, error) {
-	swap, isExist, err := executor.QuerySwap(swapID[:])
+func (executor *Executor) GetSwap(swapId ec.Hash) (*common.SwapRequest, error) {
+	fmt.Println("Kava Executor GetSwap()")
+	swap, isExist, err := executor.QuerySwap(swapId.Bytes())
 	if err != nil {
 		return nil, err
 	}
 	if !isExist {
-		return nil, fmt.Errorf("swap does not exist, swapId=%s", swapID.String())
+		return nil, fmt.Errorf("swap does not exist, swapId=%s", swapId.String())
 	}
 	if len(swap.Amount) != 1 {
 		return nil, fmt.Errorf("swap request has multi coins, coin_types=%d", swap.Amount.Len())
 	}
 
 	return &common.SwapRequest{
-		Id:                  swapID,
+		Id:                  swapId,
 		RandomNumberHash:    ec.BytesToHash(swap.RandomNumberHash),
 		ExpireHeight:        swap.ExpireHeight,
 		SenderAddress:       swap.Sender.String(),
@@ -526,18 +508,6 @@ func (executor *Executor) GetBalanceAlertMsg() (string, error) {
 	}
 
 	return alertMsg, nil
-}
-
-// Broadcast sends a transaction to Kava containing the given msg
-func (executor *Executor) Broadcast(m sdk.Msg, syncType client.SyncType) (*ctypes.ResultBroadcastTx, *common.Error) {
-	res, err := executor.Client.Broadcast(m, syncType)
-	if err != nil {
-		return &ctypes.ResultBroadcastTx{}, common.NewError(err, isInvalidSequenceError(err.Error()))
-	}
-	if res.Code != 0 {
-		return &ctypes.ResultBroadcastTx{}, common.NewError(errors.New(res.Log), isInvalidSequenceError(res.Log))
-	}
-	return res, nil
 }
 
 func isInvalidSequenceError(err string) bool {
