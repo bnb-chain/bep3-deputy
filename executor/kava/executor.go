@@ -190,12 +190,9 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 func (executor *Executor) HTLT(randomNumberHash ec.Hash, timestamp int64, heightSpan int64, recipientAddr string,
 	otherChainSenderAddr string, otherChainRecipientAddr string, outAmount *big.Int) (string, *common.Error) {
 	fmt.Println("Kava Executor HTLT()")
+
 	executor.mutex.Lock()
 	defer executor.mutex.Unlock()
-
-	// TODO: why is Binance setting here instead of globally? this applies to claim/refund as well
-	// executor.RpcClient.SetKeyManager(keyManager)
-	// defer executor.RpcClient.SetKeyManager(nil)
 
 	recipient, err := sdk.AccAddressFromBech32(recipientAddr)
 	if err != nil {
@@ -247,6 +244,7 @@ func (executor *Executor) GetFetchInterval() time.Duration {
 // Claim sends a MsgClaimAtomicSwap to kava
 func (executor *Executor) Claim(swapId ec.Hash, randomNumber ec.Hash) (string, *common.Error) {
 	fmt.Println("Kava Executor Claim()")
+
 	executor.mutex.Lock()
 	defer executor.mutex.Unlock()
 
@@ -278,6 +276,7 @@ func (executor *Executor) Claim(swapId ec.Hash, randomNumber ec.Hash) (string, *
 // Refund sends a MsgRefundAtomicSwap to kava
 func (executor *Executor) Refund(swapId ec.Hash) (string, *common.Error) {
 	fmt.Println("Kava Executor Refund()")
+
 	executor.mutex.Lock()
 	defer executor.mutex.Unlock()
 
@@ -321,7 +320,6 @@ func (executor *Executor) GetSentTxStatus(hash string) store.TxStatus {
 
 // QuerySwap queries kava for an AtomicSwap
 func (executor *Executor) QuerySwap(swapId []byte) (swap bep3.AtomicSwap, isExist bool, err error) {
-	fmt.Println("Kava Executor QuerySwap()")
 	swap, err = executor.Client.GetSwapByID(cmn.HexBytes(swapId))
 	if err != nil {
 		if strings.Contains(err.Error(), "Not found") {
@@ -335,14 +333,12 @@ func (executor *Executor) QuerySwap(swapId []byte) (swap bep3.AtomicSwap, isExis
 
 // HasSwap returns true if an AtomicSwap with this ID exists on kava
 func (executor *Executor) HasSwap(swapId ec.Hash) (bool, error) {
-	fmt.Println("Kava Executor HasSwap()")
 	_, isExist, err := executor.QuerySwap(swapId.Bytes())
 	return isExist, err
 }
 
 // GetSwap gets an AtomicSwap by its ID
 func (executor *Executor) GetSwap(swapId ec.Hash) (*common.SwapRequest, error) {
-	fmt.Println("Kava Executor GetSwap()")
 	swap, isExist, err := executor.QuerySwap(swapId.Bytes())
 	if err != nil {
 		return nil, err
@@ -361,8 +357,7 @@ func (executor *Executor) GetSwap(swapId ec.Hash) (*common.SwapRequest, error) {
 		SenderAddress:       swap.Sender.String(),
 		RecipientAddress:    swap.Recipient.String(),
 		OutAmount:           big.NewInt(swap.Amount[0].Amount.Int64()),
-		RecipientOtherChain: swap.SenderOtherChain,
-		//TODO: RecipientOtherChain: swap.RecipientOtherChain,
+		RecipientOtherChain: swap.RecipientOtherChain,
 	}, nil
 }
 
@@ -430,7 +425,6 @@ func (executor *Executor) GetBalance() (*big.Int, error) {
 	}
 
 	for _, coin := range deputy.Coins {
-		// TODO: Confirm that executor.Config.Symbol is lowercase
 		if coin.Denom == executor.Config.Symbol {
 			return big.NewInt(coin.Amount.Int64()), nil
 		}
@@ -492,11 +486,8 @@ func (executor *Executor) GetBalanceAlertMsg() (string, error) {
 
 	balances := sdk.NewCoins(deputy.Coins...)
 
-	// TODO: token symbols are both "KAVA", which doesn't work
-	// kavaBalance := balances.AmountOf(common.KAVASymbol).Int64()
-	// tokenBalance := balances.AmountOf(executor.Config.Symbol).Int64()
 	kavaBalance := balances.AmountOf("ukava").Int64()
-	tokenBalance := balances.AmountOf("btc").Int64()
+	tokenBalance := balances.AmountOf(executor.Config.Symbol).Int64()
 
 	alertMsg := ""
 	if executor.Config.KavaBalanceAlertThreshold > 0 && kavaBalance < executor.Config.KavaBalanceAlertThreshold {

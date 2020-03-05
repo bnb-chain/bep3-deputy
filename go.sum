@@ -225,6 +225,8 @@ github.com/kava-labs/go-sdk v0.0.0-20200302225647-419da6653017 h1:ZAq/9SebRlP3BZ
 github.com/kava-labs/go-sdk v0.0.0-20200302225647-419da6653017/go.mod h1:SLF61a6Rt4DMM3Jy8y0DpHeRqDzuaVHFbql9I15iUiI=
 github.com/kava-labs/kava v0.4.2-0.20200304082756-4f1e503f1336 h1:GISDHjhEqjxSnZkMcZOWiFv5j9LIebUSDsbOwWJqmOI=
 github.com/kava-labs/kava v0.4.2-0.20200304082756-4f1e503f1336/go.mod h1:Gt/ASSm567ZHGqOszQ6Z9fbdHzFvDnpCEtaSCM2dzH8=
+github.com/kava-labs/kava v0.4.2-0.20200305020846-52a58dffdeb2 h1:6QUnw1btM4sWsOYw91ZWB7YVjw5MIM+4lSVl1HugyrM=
+github.com/kava-labs/kava v0.4.2-0.20200305020846-52a58dffdeb2/go.mod h1:Gt/ASSm567ZHGqOszQ6Z9fbdHzFvDnpCEtaSCM2dzH8=
 github.com/keybase/go-keychain v0.0.0-20190712205309-48d3d31d256d h1:Z+RDyXzjKE0i2sTjZ/b1uxiGtPhFy34Ou/Tk0qwN0kM=
 github.com/keybase/go-keychain v0.0.0-20190712205309-48d3d31d256d/go.mod h1:JJNrCn9otv/2QP4D7SMJBgaleKpOf66PnW6F5WGNRIc=
 github.com/kisielk/errcheck v1.1.0/go.mod h1:EZBBE59ingxPouuu3KfxchcWSUPOHkagtvWXihfKN4Q=
