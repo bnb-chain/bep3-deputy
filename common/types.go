@@ -29,8 +29,6 @@ const BEP2Decimal = 8
 
 const KAVASymbol = "KAVA"
 
-// const BEP2Decimal = 8
-
 const EthSwapTypeEth = "eth_swap"
 const EthSwapTypeErc20 = "erc20_swap"
 
