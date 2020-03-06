@@ -24,7 +24,7 @@ require (
 	github.com/influxdata/influxdb v1.7.7 // indirect
 	github.com/jinzhu/gorm v1.9.10
 	github.com/kava-labs/go-sdk v0.0.0-20200302225647-419da6653017
-	github.com/kava-labs/kava v0.4.2-0.20200305020846-52a58dffdeb2
+	github.com/kava-labs/kava v0.4.2-0.20200306003816-226549392b82
 	github.com/mattn/go-sqlite3 v1.11.0 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/op/go-logging v0.0.0-20160211212156-b2cb9fa56473

@@ -76,7 +76,7 @@
     "aws_secret_name": "",
     "mnemonic": "equip town gesture square tomorrow volume nephew minute witness beef rich gadget actress egg sing secret pole winter alarm law today check violin uncover",
     "rpc_addr": "tcp://localhost:26657",
-    "symbol": "btc",
+    "symbol": "bnb",
     "deputy_addr": "kava15qdefkmwswysgg4qxgqpqr35k3m49pkx2jdfnw",
     "fetch_interval": 2,
     "token_balance_alert_threshold": 10000,
