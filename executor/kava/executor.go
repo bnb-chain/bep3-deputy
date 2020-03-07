@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -101,7 +102,6 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 		for _, msg := range msgs {
 			switch realMsg := msg.(type) {
 			case bep3.MsgCreateAtomicSwap:
-				fmt.Println("MsgCreateAtomicSwap case")
 				if !realMsg.CrossChain {
 					continue
 				}
@@ -113,12 +113,18 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 				signer := msg.GetSigners()[0]
 				randomNumberHash := hex.EncodeToString(realMsg.RandomNumberHash)
 
+				// Regex matches (key, value) for swap ID in logs
+				m := regexp.MustCompile(`{"key":"atomic_swap_id","value":"[a-zA-Z0-9]{64}"}`)
+				res := m.FindString(txResult.Log)
+				// Trim result prefix and suffix to isolate swap ID
+				swapID := res[33:97]
+
 				txLog := store.TxLog{
 					Chain:  common.ChainKava,
 					TxType: store.TxTypeOtherHTLT,
 					TxHash: txHash,
 
-					SwapId:           strings.ReplaceAll(txResult.Log, "Msg 0: swapID: ", ""),
+					SwapId:           swapID,
 					SenderAddr:       signer.String(),
 					ReceiverAddr:     realMsg.To.String(),
 					SenderOtherChain: realMsg.SenderOtherChain,
@@ -135,7 +141,6 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 				}
 				txLogs = append(txLogs, &txLog)
 			case bep3.MsgClaimAtomicSwap:
-				fmt.Println("Saw new MsgClaimAtomicSwap")
 				signer := msg.GetSigners()[0]
 				swapID := hex.EncodeToString(realMsg.SwapID)
 				randomNum := hex.EncodeToString(realMsg.RandomNumber)
@@ -154,7 +159,6 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 				}
 				txLogs = append(txLogs, &txLog)
 			case bep3.MsgRefundAtomicSwap:
-				fmt.Println("Saw new MsgRefundAtomicSwap")
 				signer := msg.GetSigners()[0]
 				swapID := hex.EncodeToString(realMsg.SwapID)
 
@@ -189,7 +193,6 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 // HTLT sends a transaction containing a MsgCreateAtomicSwap to kava
 func (executor *Executor) HTLT(randomNumberHash ec.Hash, timestamp int64, heightSpan int64, recipientAddr string,
 	otherChainSenderAddr string, otherChainRecipientAddr string, outAmount *big.Int) (string, *common.Error) {
-	fmt.Println("Kava Executor HTLT()")
 
 	executor.mutex.Lock()
 	defer executor.mutex.Unlock()
@@ -243,7 +246,6 @@ func (executor *Executor) GetFetchInterval() time.Duration {
 
 // Claim sends a MsgClaimAtomicSwap to kava
 func (executor *Executor) Claim(swapId ec.Hash, randomNumber ec.Hash) (string, *common.Error) {
-	fmt.Println("Kava Executor Claim()")
 
 	executor.mutex.Lock()
 	defer executor.mutex.Unlock()
@@ -268,14 +270,11 @@ func (executor *Executor) Claim(swapId ec.Hash, randomNumber ec.Hash) (string, *
 		return "", common.NewError(errors.New(res.Log), isInvalidSequenceError(res.Log))
 	}
 
-	fmt.Println("KavaExecutor Claim() tx hash:", res.Hash.String())
-
-	return "", nil
+	return res.Hash.String(), nil
 }
 
 // Refund sends a MsgRefundAtomicSwap to kava
 func (executor *Executor) Refund(swapId ec.Hash) (string, *common.Error) {
-	fmt.Println("Kava Executor Refund()")
 
 	executor.mutex.Lock()
 	defer executor.mutex.Unlock()
@@ -297,9 +296,7 @@ func (executor *Executor) Refund(swapId ec.Hash) (string, *common.Error) {
 		return "", common.NewError(errors.New(res.Log), isInvalidSequenceError(res.Log))
 	}
 
-	fmt.Println("KavaExecutor Refund() tx hash:", res.Hash.String())
-
-	return "", nil
+	return res.Hash.String(), nil
 }
 
 // GetSentTxStatus gets a sent transaction's status
