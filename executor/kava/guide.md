@@ -1,13 +1,73 @@
 # Set up
-## Kava 
-1. Clone kava [repo]( https://github.com/Kava-Labs/kava)
-2. Checkout branch `develop`
-3. Install the `kvd` and `kvcli` binaries with `make install`
-4. Initialize the blockchain with chain-id `testing`
-5. Create 2 accounts `deputy` and `user` that both have a bnb balance of 100000000000.
-6. In the genesis file located in `/contrib/testnet-5000/genesis-examples/genesis-bep3.json`, enter `deputy` address in the `deputy_address` field under bep3 params.
+## kava 
+Clone kava [repo]( https://github.com/Kava-Labs/kava)
 
-## Bnbchain
+Remove existing kava binaries
+```bash
+rm -rf ~/.kvd
+rm -rf ~/.kvcli
+```
+
+Checkout develop branch
+```bash
+git checkout develop
+```
+
+Install the `kvd` and `kvcli` binaries
+```bash
+make install
+```
+
+Copy example genesis file to config
+```bash
+cp ./contrib/testnet-5000/genesis_examples/bep3.json ~/.kvd/config/genesis.json
+```
+
+Initialize the blockchain with chain-id `testing`
+```bash
+# moniker is your preferred nickname
+kvd init --chain-id=testing ${MONIKER}
+```
+
+Add genesis accounts `deputy` and `user` with bnb balance.
+```bash
+kvcli keys add deputy
+# enter a new password
+# kvcli will print the deputy's mnemonic phrase, we'll need this later
+
+kvd add-genesis-account $(kvcli keys show deputy -a) 1000000000000bnb
+
+kvcli keys add user
+# enter a new password
+kvd add-genesis-account $(kvcli keys show user -a) 1000000000000bnb
+```
+
+Populate genesis file with custom values
+```bash
+# install moreutils if it isn't available
+brew install moreutils
+
+# replace KAVA_DEPUTY_ADDRESS with the deputy's address
+jq '.app_state.bep3.params.bnb_deputy_address="KAVA_DEPUTY_ADDRESS"' ~/.kvd/config/genesis.json|sponge ~/.kvd/config/genesis.json
+```
+
+Create validator and collect gentxs
+```bash
+kvcli keys add validator
+# enter a new password
+kvd add-genesis-account $(kvcli keys show validator -a) 5000000000000ukava
+kvd gentx --name validator --amount 100000000ukava
+# enter password
+
+kvd collect-gentxs
+kvcli config trust-node true
+kvcli config chain-id testing
+
+# check genesis is valid
+kvd validate-genesis
+```
+
+## bnbchain
 ### Option 1: use the existing cloud server
 We've set up a cloud server containing `bnbchaind` with the expected accounts/mnemonics and IP address. It can be used for testing, contact system admin @karzak for ssh access.
 ```bash
@@ -15,25 +75,41 @@ ssh ubuntu@ec2-3-231-211-245.compute-1.amazonaws.com
 ```
 
 ### Option 2: manual set up
-1. Set up _local_ bnbchain with the steps provided [here](https://docs.binance.org/fullnode.html) using flag `--chain-id Binance-Chain-Tigris`.
+Set up _local_ bnbchain with the steps provided [here](https://docs.binance.org/fullnode.html) using flag `--chain-id Binance-Chain-Tigris`.
 **Note**: do not join the bnbchain mainnet. You must set up a local chain with chain id "Binance-Chain-Tigris".
-2. With `bnbchaind` and `bnbcli` installed, create 2 accounts `deputy` and `user` that both have a BNB balance of 10000000000000.
+
+With `bnbchaind` and `bnbcli` installed, create 2 accounts `deputy` and `user` that both have a BNB balance of 10000000000000. Save the deputy's mnemonic.
 
 ## bep3-deputy
-1. Clone this repo
-2. Checkout branch `kava-deputy`
-3. A sample config file is located at `/config/config.json`. Sections `bnb_config` and `kava_config` must be modified to match your bnbchain and kava chain variables. Enter kava `deputy` address and mnemonic and bnbchain `deputy` address and mnemonic. The `rpc_addr` field may also need to be updated.
-4. Build bep3-deputy with `make build`
+Clone this repo
+```bash
+git clone git@github.com:Kava-Labs/bep3-deputy.git
+```
+
+Checkout `kava-deputy` branch 
+```bash
+git checkout kava-deputy
+```
+
+A sample config file is located at `/config/config.json`. Sections `bnb_config` and `kava_config` must be modified to match your bnbchain and kava chain variables.
+- Enter kava `deputy` address and mnemonic
+- Enter bnbchain `deputy` address and mnemonic.
+- The `rpc_addr` field may also need to be updated.
+
+Build bep3-deputy
+```bash
+make build
+```
 
 # Start processes
-## Kava
-Start Kava
+## kava
+Start kava
 ```bash
 kvd unsafe-reset-all
 kvd start
 ```
 
-## Bnbchain
+## bnbchain
 Start bnbchain
 ```bash
 bnbchaind unsafe-reset-all
@@ -61,7 +137,7 @@ Start deputy from `/build` dir:
 ./deputy --bnb-network 1 --kava-network 0 --config-type local --config-path "../config/config.json"
 ```
 
-# Transfer BNB from Bnbchaind to Kava
+# Transfer BNB from bnbchain to kava
 
 ##bnbchaind
 
@@ -106,7 +182,7 @@ swap.OtherChainSwapId: edaf7deaf96d0ea583fa8a1cf3b547089418ad1065b4bca6ed856fcf8
 
 You'll need the kava swap ID and random number from above in order to claim the swap on kava.
 
-## Kava
+## kava
 
 Claim atomic swap
 ```bash
@@ -153,13 +229,12 @@ logs:
 
 Funds have been transferred from the user's bnbchain address to the user's kava address. After _n_ blocks the deputy will relay the successful claim to bnbchain, closing the swap.
 
-# Transfer bnb from Kava to Bnbchain
+# Transfer bnb from kava to bnbchain
 
-## Kava
+## kava
 Create a new Atomic Swap
 ```bash
 kvcli tx bep3 create ${KAVA_DEPUTY_ADDRESS} ${BNBCHAIN_USER_ADDRESS} ${BNBCHAIN_DEPUTY_ADDRESS} now 1111111bnb 1111111bnb 360 true --from user
-# Note: you may need to include `--chain-id testing`
 ```
 
 The Atomic Swap creation process generates a random number and timestamp and requires a password
@@ -218,4 +293,3 @@ bnbcli token claim \
 ```
 
 Funds have been transferred from the user's kava address to the user's bnbchain address. After _n_ blocks the deputy will relay the successful claim to kava, closing the swap.
-
