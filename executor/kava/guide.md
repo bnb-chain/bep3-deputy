@@ -20,7 +20,7 @@ make install
 
 Copy example genesis file to config
 ```bash
-cp ./contrib/testnet-5000/genesis_examples/bep3.json ~/.kvd/config/genesis.json
+cp ./contrib/testnet-5000/genesis_examples/genesis_bep3.json ~/.kvd/config/genesis.json
 ```
 
 Initialize the blockchain with chain-id `testing`
