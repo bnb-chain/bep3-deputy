@@ -18,15 +18,15 @@ Install the `kvd` and `kvcli` binaries
 make install
 ```
 
-Copy example genesis file to config
-```bash
-cp ./contrib/testnet-5000/genesis_examples/genesis_bep3.json ~/.kvd/config/genesis.json
-```
-
 Initialize the blockchain with chain-id `testing`
 ```bash
 # moniker is your preferred nickname
 kvd init --chain-id=testing ${MONIKER}
+```
+
+Copy sample bep3 genesis file to config
+```bash
+cp ./contrib/testnet-5000/genesis_examples/genesis_bep3.json ~/.kvd/config/genesis.json
 ```
 
 Add genesis accounts `deputy` and `user` with bnb balance.
@@ -44,10 +44,9 @@ kvd add-genesis-account $(kvcli keys show user -a) 1000000000000bnb
 
 Populate genesis file with custom values
 ```bash
-# install moreutils if it isn't available
-brew install moreutils
+brew install moreutils 
 
-# replace KAVA_DEPUTY_ADDRESS with the deputy's address
+# replace KAVA_DEPUTY_ADDRESS with the deputy address from above
 jq '.app_state.bep3.params.bnb_deputy_address="KAVA_DEPUTY_ADDRESS"' ~/.kvd/config/genesis.json|sponge ~/.kvd/config/genesis.json
 ```
 
