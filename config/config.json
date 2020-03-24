@@ -13,7 +13,7 @@
     "reconciliation_diff_amount": "10"
   },
   "chain_config": {
-    "bnb_confirm_num": 10,
+    "bnb_confirm_num": 2,
     "bnb_auto_retry_num": 3,
     "bnb_auto_retry_timeout": 60,
     "bnb_expire_height_span": 360,
@@ -24,10 +24,9 @@
     "bnb_max_deputy_out_amount": 20000000000,
     "bnb_ratio": "1",
     "bnb_fixed_fee": 1000,
-    "bnb_start_height": 1,
-
+    "bnb_start_height": 73224250,
     "other_chain": "KAVA",
-    "other_chain_confirm_num": 10,
+    "other_chain_confirm_num": 2,
     "other_chain_decimal": 8,
     "other_chain_expire_height_span": 360,
     "other_chain_auto_retry_num": 3,
@@ -62,10 +61,10 @@
     "key_type": "mnemonic",
     "aws_region": "",
     "aws_secret_name": "",
-    "mnemonic": "clinic soap symptom alter mango orient punch table seek among broken bundle best dune hurt predict liquid subject silver once kick metal okay moment",
-    "rpc_addr": "http://3.231.211.245:26657",
+    "mnemonic": "assault van obtain draw anger wait price case clinic prison twice history recall audit solar body load theme valley side help school push replace",
+    "rpc_addr": "data-seed-pre-2-s1.binance.org:80",
     "symbol": "BNB",
-    "deputy_addr": "bnb1uky3me9ggqypmrsvxk7ur6hqkzq7zmv4ed4ng7",
+    "deputy_addr": "tbnb10uypsspvl6jlxcx5xse02pag39l8xpe7a3468h",
     "fetch_interval": 2,
     "token_balance_alert_threshold": 10000,
     "bnb_balance_alert_threshold": 10000
@@ -74,10 +73,10 @@
     "key_type": "mnemonic",
     "aws_region": "",
     "aws_secret_name": "",
-    "mnemonic": "equip town gesture square tomorrow volume nephew minute witness beef rich gadget actress egg sing secret pole winter alarm law today check violin uncover",
+    "mnemonic": "slab twist stumble inmate predict parent repair crystal celery swarm memory loan rabbit blanket shell talk attend charge inside denial harbor music board steak",
     "rpc_addr": "tcp://localhost:26657",
     "symbol": "bnb",
-    "deputy_addr": "kava15qdefkmwswysgg4qxgqpqr35k3m49pkx2jdfnw",
+    "deputy_addr": "kava1sl8glhaa9f9tep0d9h8gdcfmwcatghtdrfcd2x",
     "fetch_interval": 2,
     "token_balance_alert_threshold": 10000,
     "kava_balance_alert_threshold": 10000

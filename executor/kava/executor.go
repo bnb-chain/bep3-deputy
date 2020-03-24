@@ -48,7 +48,7 @@ func NewExecutor(rpcAddr string, networkType client.ChainNetwork, cfg *util.Kava
 	cdc := app.MakeCodec()
 
 	// Set up Kava HTTP client and set codec
-	kava := client.NewKavaClient(cdc, cfg.Mnemonic, cfg.RpcAddr, networkType)
+	kava := client.NewKavaClient(cdc, cfg.Mnemonic, app.Bip44CoinType, cfg.RpcAddr, networkType)
 	kava.Keybase.SetCodec(cdc)
 
 	return &Executor{
@@ -193,7 +193,6 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 // HTLT sends a transaction containing a MsgCreateAtomicSwap to kava
 func (executor *Executor) HTLT(randomNumberHash ec.Hash, timestamp int64, heightSpan int64, recipientAddr string,
 	otherChainSenderAddr string, otherChainRecipientAddr string, outAmount *big.Int) (string, *common.Error) {
-
 	executor.mutex.Lock()
 	defer executor.mutex.Unlock()
 
