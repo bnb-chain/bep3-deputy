@@ -70,8 +70,6 @@ func (deputy *Deputy) sendOtherHTLT(swap *store.Swap) (string, error) {
 		otherChainSwapId := ec.HexToHash(swap.OtherChainSwapId)
 		bnbChainSwapId := ec.HexToHash(swap.BnbChainSwapId)
 
-		fmt.Println("Expected other chain swap ID:", swap.OtherChainSwapId)
-
 		isExist, err := deputy.OtherExecutor.HasSwap(otherChainSwapId)
 		if err != nil {
 			return "", fmt.Errorf("query chain %s swap error, other_chain_swap_id=%s, err=%s",
@@ -135,8 +133,8 @@ func (deputy *Deputy) sendOtherHTLT(swap *store.Swap) (string, error) {
 			}
 			return "", fmt.Errorf(errMsg)
 		}
-		util.Logger.Infof("send chain %s HTLT tx success, bnb_swap_id=%s, tx_hash=%s", deputy.OtherExecutor.GetChain(),
-			swap.BnbChainSwapId, txHash)
+		util.Logger.Infof("send chain %s HTLT tx success, other_chain_swap_id=%s, tx_hash=%s", deputy.OtherExecutor.GetChain(),
+			swap.OtherChainSwapId, txHash)
 
 		txSent.TxHash = txHash
 

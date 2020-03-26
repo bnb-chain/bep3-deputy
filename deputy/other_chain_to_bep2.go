@@ -70,8 +70,6 @@ func (deputy *Deputy) sendBEP2HTLT(swap *store.Swap) (string, error) {
 		bnbSwapId := ec.HexToHash(swap.BnbChainSwapId)
 		otherChainSwapId := ec.HexToHash(swap.OtherChainSwapId)
 
-		fmt.Println("Expected bnbchain swap ID:", swap.BnbChainSwapId)
-
 		// do not send htlt tx if swap already exist or query failed
 		isExist, err := deputy.BnbExecutor.HasSwap(bnbSwapId)
 		if err != nil {
