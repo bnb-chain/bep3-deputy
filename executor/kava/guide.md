@@ -89,7 +89,7 @@ git clone git@github.com:Kava-Labs/bep3-deputy.git
 git checkout kava-deputy
 ```
 
-A sample config file is located at `/config/config.json`. Modify the following sections:
+A sample config file is located at `/config/config_kava.json`. Modify the following sections:
 
 - `chain_config`: enter latest testnet block height in `bnb_start_height`
 - `bnb_config`: enter bnbchain deputy details in `deputy_addr` and `mnemonic`, check `rpc_addr`
@@ -123,7 +123,7 @@ cd /build
 rm -rf deputy.db
 
 # Start deputy from `/build` dir:
-./deputy --bnb-network 0 --kava-network 0 --config-type local --config-path "../config/config.json"
+./deputy --bnb-network 0 --kava-network 0 --config-type local --config-path "../config/config_kava.json"
 ```
 
 # Transfer BNB from bnbchain to kava
