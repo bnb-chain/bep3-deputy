@@ -1,35 +1,42 @@
 # Set up
-## kava 
-Clone kava [repo]( https://github.com/Kava-Labs/kava)
+
+## kava
+
+Clone kava [repo](https://github.com/Kava-Labs/kava)
 
 Remove existing kava binaries
+
 ```bash
 rm -rf ~/.kvd
 rm -rf ~/.kvcli
 ```
 
 Checkout develop branch
+
 ```bash
 git checkout develop
 ```
 
 Install the `kvd` and `kvcli` binaries
+
 ```bash
 make install
 ```
 
 Initialize the blockchain with chain-id `testing`
+
 ```bash
 # moniker is your preferred nickname
 kvd init --chain-id=testing ${MONIKER}
 ```
 
-Copy sample bep3 genesis file to config
 ```bash
+# Copy sample bep3 genesis file to config
 cp ./contrib/testnet-5000/genesis_examples/genesis_bep3.json ~/.kvd/config/genesis.json
 ```
 
 Add genesis accounts `deputy` and `user` with bnb balance.
+
 ```bash
 kvcli keys add deputy
 # enter a new password
@@ -43,14 +50,16 @@ kvd add-genesis-account $(kvcli keys show user -a) 1000000000000bnb
 ```
 
 Populate genesis file with custom values
+
 ```bash
-brew install moreutils 
+brew install moreutils
 
 # replace KAVA_DEPUTY_ADDRESS with the deputy address from above
 jq '.app_state.bep3.params.bnb_deputy_address="KAVA_DEPUTY_ADDRESS"' ~/.kvd/config/genesis.json|sponge ~/.kvd/config/genesis.json
 ```
 
 Create validator and collect gentxs
+
 ```bash
 kvcli keys add validator
 # enter a new password
@@ -66,177 +75,154 @@ kvcli config chain-id testing
 kvd validate-genesis
 ```
 
-## bnbchain
-### Option 1: use the existing cloud server
-We've set up a cloud server containing `bnbchaind` with the expected accounts/mnemonics and IP address. It can be used for testing, contact system admin @karzak for ssh access.
-```bash
-ssh ubuntu@ec2-3-231-211-245.compute-1.amazonaws.com
-```
+## bnbchain testnet
 
-### Option 2: manual set up
-Set up _local_ bnbchain with the steps provided [here](https://docs.binance.org/fullnode.html) using flag `--chain-id Binance-Chain-Tigris`.
-**Note**: do not join the bnbchain mainnet. You must set up a local chain with chain id "Binance-Chain-Tigris".
-
-With `bnbchaind` and `bnbcli` installed, create 2 accounts `deputy` and `user` that both have a BNB balance of 10000000000000. Save the deputy's mnemonic.
+1. Download tbnbcli by following these [steps](https://docs.binance.org/fullnode.html).
+2. Create two new testnet accounts `deputy` and `user` and load them with testnet BNB from the [faucet](https://www.binance.vision/tutorials/binance-dex-funding-your-testnet-account). Save the deputy's mnemonic.
 
 ## bep3-deputy
-Clone this repo
+
+Clone this repo and checkout the `kava-deputy` branch
+
 ```bash
 git clone git@github.com:Kava-Labs/bep3-deputy.git
-```
-
-Checkout `kava-deputy` branch 
-```bash
 git checkout kava-deputy
 ```
 
-A sample config file is located at `/config/config.json`. Sections `bnb_config` and `kava_config` must be modified to match your bnbchain and kava chain variables.
-- Enter kava `deputy` address and mnemonic
-- Enter bnbchain `deputy` address and mnemonic.
-- The `rpc_addr` field may also need to be updated.
+A sample config file is located at `/config/config.json`. Modify the following sections:
+
+- `chain_config`: enter latest testnet block height in `bnb_start_height`
+- `bnb_config`: enter bnbchain deputy details in `deputy_addr` and `mnemonic`, check `rpc_addr`
+- `kava_config`: enter kava deputy details in `deputy_addr` and `mnemonic`, check `rpc_addr`
 
 Build bep3-deputy
+
 ```bash
 make build
 ```
 
 # Start processes
+
 ## kava
-Start kava
+
+Start kava:
+
 ```bash
 kvd unsafe-reset-all
 kvd start
 ```
 
-## bnbchain
-Start bnbchain
-```bash
-bnbchaind unsafe-reset-all
-bnbchaind start
-```
-
-If you're using the cloud server, you'll need to fund `deputy` and `user1` with BNB
-```bash
-bnbcli send --amount 10000000000000:BNB --to bnb1uky3me9ggqypmrsvxk7ur6hqkzq7zmv4ed4ng7 --from bnb1j9j2yfzs3x4xkqt3fgmyjn7kug4np3r6786y7c --chain-id Binance-Chain-Tigris
-# enter password: "password"
-
-bnbcli send --amount 100000000000:BNB --to bnb1urfermcg92dwq36572cx4xg84wpk3lfpksr5g7 --from bnb1j9j2yfzs3x4xkqt3fgmyjn7kug4np3r6786y7c --chain-id Binance-Chain-Tigris
-# enter password: "password"
-```
-
 ## bep3-deputy
-Remove database:
+
+Start deputy:
+
 ```bash
 cd /build
-rm -rf deputy.db # deputy.db database must be removed between each run
-```
 
-Start deputy from `/build` dir:
-```bash
-./deputy --bnb-network 1 --kava-network 0 --config-type local --config-path "../config/config.json"
+# deputy.db database must be removed between each run
+rm -rf deputy.db
+
+# Start deputy from `/build` dir:
+./deputy --bnb-network 0 --kava-network 0 --config-type local --config-path "../config/config.json"
 ```
 
 # Transfer BNB from bnbchain to kava
 
-##bnbchaind
+## bnbchain testnet
 
-Create Cross Chain HTLT (from bnbchain _user_ -> to kava _user_)
+Create cross-chain HTLT (from bnbchain _user_ -> to kava _user_)
+
 ```bash
-bnbcli token HTLT \
+tbnbcli token HTLT \
   --recipient-addr ${BNB_DEPUTY_ADDRESS} \
-  --amount 30000000:BNB \
+  --amount 10000000:BNB \
   --expected-income 10000000:BNB \
   --height-span 10001 \
   --from ${BNB_USER_ADDRESS} \
   --cross-chain true \
   --recipient-other-chain ${KAVA_USER_ADDRESS} \
-  --chain-id Binance-Chain-Tigris
+  --chain-id Binance-Chain-Nile \
+  --node ${BNB_RPC_URL} \
+  --trust-node
 ```
 
 The HTLT creation process generates a random number and timestamp and requires a password:
+
 ```bash
 Random number: 90a62df3efb640ea361008f619adf878e88e72bb877a5aba62230c2c3bb2c94f
 Timestamp: 1583429130
 Random number hash: 36371b5a6793cf411c1e55bbb5b6104981d79cce402259569f18bd044fb07303
 Password to sign with 'user':
-# If you're using the cloud server enter password: "password"
+# enter password
 ```
 
 Get the `swapID` from the successful HTLT creation tx result. Tx result should be similar to:
+
 ```bash
 Committed at block 332 (tx hash: C3D31985F37BB892883C91582D9D1235CA802E87DABCBF064BAB91E8D057696F, response: {Code:0 Data:[134 192 154 45 198 112 54 2 217 65 59 208 153 156 212 105 166 72 239 14 19 136 176 188 147 245 107 229 212 214 157 109] Log:Msg 0: swapID: 86c09a2dc6703602d9413bd0999cd469a648ef0e1388b0bc93f56be5d4d69d6d Info: GasWanted:0 GasUsed:0 Events:[{Type: Attributes:[{Key:[115 101 110 100 101 114] Value:[98 110 98 49 117 114 102 101 114 109 99 103 57 50 100 119 113 51 54 53 55 50 99 120 52 120 103 56 52 119 112 107 51 108 102 112 107 115 114 53 103 55] XXX_NoUnkeyedLiteral:{} XXX_unrecognized:[] XXX_sizecache:0} {Key:[114 101 99 105 112 105 101 110 116] Value:[98 110 98 49 119 120 101 112 108 121 119 55 120 56 97 97 104 121 57 51 119 57 54 121 104 119 109 55 120 99 113 51 107 101 52 102 56 103 101 57 51 117] XXX_NoUnkeyedLiteral:{} XXX_unrecognized:[] XXX_sizecache:0} {Key:[97 99 116 105 111 110] Value:[72 84 76 84] XXX_NoUnkeyedLiteral:{} XXX_unrecognized:[] XXX_sizecache:0}] XXX_NoUnkeyedLiteral:{} XXX_unrecognized:[] XXX_sizecache:0}] Codespace: XXX_NoUnkeyedLiteral:{} XXX_unrecognized:[] XXX_sizecache:0})
 ```
 
 Query the new swap on bnbchain by its ID
+
 ```bash
-  bnbcli token query-swap \
+tbnbcli token query-swap \
   --swap-id ${BNBCHAIN_SWAP_ID} \
-  --chain-id Binance-Chain-Tigris
+  --chain-id Binance-Chain-Nile \
+  --node ${BNB_RPC_URL} \
+  --trust-node
 ```
 
-The deputy process will create an atomic swap on kava with the same information after _n_ blocks. It will log the expected kava swap ID as `swap.OtherChainSwapId` (it will be different than the bnbchain swap ID):
+The deputy process will create an atomic swap on kava with the same information after _n_ blocks
+
 ```bash
-swap.OtherChainSwapId: edaf7deaf96d0ea583fa8a1cf3b547089418ad1065b4bca6ed856fcf8aaa110e
+# The deputy will log the expected other_chain_swap_id
+2020-03-26 15:09:59 INFO sendOtherHTLT send chain KAVA HTLT tx success, other_chain_swap_id=da89ae0c4f341ffa38345c635725bcc0d4e221b807fc7f143fabdd1e13c3b4d5, tx_hash=A3DC82B10373B30D00D30BE253DF34DADF0D57CCEAD319F09DDD3553ED2B36FC
 ```
 
-You'll need the kava swap ID and random number from above in order to claim the swap on kava.
+The `other_chain_swap_id` and the generated random number from above can be used to claim the swap on kava.
 
 ## kava
 
 Claim atomic swap
+
 ```bash
 kvcli tx bep3 claim ${KAVA_SWAP_ID} ${RANDOM_NUMBER} --from user
 # enter password
 ```
 
-A successful claim should output a tx result log similar to:
+Funds will be transferred to the intended recipient's kava address. The claim should output a tx result log containing:
+
 ```bash
 logs:
 - msgindex: 0
   success: true
   log: ""
   events:
-  - type: claimAtomicSwap
-    attributes:
-    - key: claim_sender
-      value: kava1xy7hrjy9r0algz9w3gzm8u6mrpq97kwta747gj
-    - key: recipient
-      value: kava1xy7hrjy9r0algz9w3gzm8u6mrpq97kwta747gj
-    - key: atomic_swap_id
-      value: 53ab009facd0a9b2e02971cd4228d969f2f4fc41712b6984975d42b655159b7e
-    - key: random_number_hash
-      value: 36371b5a6793cf411c1e55bbb5b6104981d79cce402259569f18bd044fb07303
-    - key: random_number
-      value: 90a62df3efb640ea361008f619adf878e88e72bb877a5aba62230c2c3bb2c94f
   - type: message
     attributes:
     - key: action
       value: claimAtomicSwap
-    - key: sender
-      value: kava1eyugkwc74zejgwdwl7mvm7pad4hzdnka4wmdmu
-    - key: module
-      value: bep3
-    - key: sender
-      value: kava1xy7hrjy9r0algz9w3gzm8u6mrpq97kwta747gj
-  - type: transfer
-    attributes:
-    - key: recipient
-      value: kava1xy7hrjy9r0algz9w3gzm8u6mrpq97kwta747gj
-    - key: amount
-      value: 29999000bnb
 ```
 
-Funds have been transferred from the user's bnbchain address to the user's kava address. After _n_ blocks the deputy will relay the successful claim to bnbchain, closing the swap.
+After _n_ blocks the deputy will relay the successful claim to bnbchain, closing the swap:
+
+```bash
+# the deputy will log an INFO message similar to:
+2020-03-26 15:17:17 INFO sendBEP2Claim send bep2 claim tx success, bnb_swap_id=4c4abc3fcc7a7e9b4f7d586f439c16312a20f49ab8129a00a86dd54257d79b6f, random_number=0x90e2cbb1a04a24553736adcee3c7862b536e7afaa34634d65f397812702030f2, tx_hash=37A4AB493F607041CE1367BC3FBDE382629D60808A07203C44A74A21D9D2D19A
+```
 
 # Transfer bnb from kava to bnbchain
 
 ## kava
+
 Create a new Atomic Swap
+
 ```bash
 kvcli tx bep3 create ${KAVA_DEPUTY_ADDRESS} ${BNBCHAIN_USER_ADDRESS} ${BNBCHAIN_DEPUTY_ADDRESS} now 1111111bnb 1111111bnb 360 true --from user
 ```
 
 The Atomic Swap creation process generates a random number and timestamp and requires a password
+
 ```bash
 Random number: ead368db570c229960e1c3bed0707b484210cb6ec40e7ecdd87a9c476a74b8ee
 Timestamp: 1583545652
@@ -247,48 +233,33 @@ Password to sign with 'user':
 # enter password
 ```
 
-Successful Atomic Swap creation will log a `createAtomicSwap` event similar to:
 ```bash
-events:
-- type: createAtomicSwap
-  attributes:
-  - key: sender
-    value: kava1xy7hrjy9r0algz9w3gzm8u6mrpq97kwta747gj
-  - key: recipient
-    value: kava15qdefkmwswysgg4qxgqpqr35k3m49pkx2jdfnw
-  - key: atomic_swap_id
-    value: 084fbf068810a99340536580db51e2a2777b3a1b25af69eebfc9da02971c8e7c
-  - key: random_number_hash
-    value: 02a3987b7c6a1ff6ee035b47f6592392469eb9a492b7a99056245c2a6e33cdb7
-  - key: timestamp
-    value: "1583866396"
-  - key: sender_other_chain
-    value: bnb1uky3me9ggqypmrsvxk7ur6hqkzq7zmv4ed4ng7
-  - key: expire_height
-    value: "367"
-  - key: amount
-    value: 1111111bnb
-  - key: expected_income
-    value: 1111111bnb
+# the deputy will log an INFO message similar to:
+2020-03-26 15:23:28 INFO sendBEP2HTLT send bep2 HTLT tx success, bnb_swap_id=67af6df0af8817d6c6240f8f7c2139df9e15185f324b08b53caed14f83d511a9, tx_hash=AD283B9F0E5147A7AD02B846AACE1709166173A1C2BC72D1FF8BCC8F140DFDEA
 ```
 
-Query the new swap on kava by its ID
 ```bash
-  kvcli q bep3 swap ${KAVA_SWAP_ID}
+# query the new swap on kava by its ID
+kvcli q bep3 swap ${KAVA_SWAP_ID}
 ```
 
-After n blocks, the transaction will be relayed by the bep3-deputy to bnbchain. The bep3-deputy will log an INFO message similar to:
+After n blocks, the swap will created on bnbchain by the deputy
+
 ```bash
+# the deputy will log an INFO message similar to:
 INFO sendBEP2HTLT send bep2 HTLT tx success, bnb_swap_id=448a4cc0e1d2b4bce793919fcb2e557aae44d96bc715af8e1a110f774747667d, tx_hash=0DAD58181C6537B05394F46AA42FD9C73002A6E8601205FED6FBAEEDDAE7E1D1
 ```
 
 The swap on bnbchain can now be claimed
+
 ```bash
-bnbcli token claim \
+tbnbcli token claim \
   --swap-id ${BNB_SWAP_ID} \
   --random-number ${RANDOM_NUMBER} \
   --from ${BNB_USER_ADDRESS} \
-  --chain-id Binance-Chain-Tigris
+  --chain-id Binance-Chain-Nile \
+  --node tcp://data-seed-pre-0-s1.binance.org:80 \
+  --trust-node
 ```
 
-Funds have been transferred from the user's kava address to the user's bnbchain address. After _n_ blocks the deputy will relay the successful claim to kava, closing the swap.
+Funds are transferred to the intended recipient's bnbchain address. After _n_ blocks the deputy will relay the successful claim to kava, closing the swap.
