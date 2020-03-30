@@ -116,8 +116,8 @@ func (cfg *ChainConfig) Validate() {
 		panic("bnb_fixed_fee should be no less than 0")
 	}
 
-	if cfg.OtherChain != dc.ChainKava {
-		panic(fmt.Sprintf("other chain only supports %s", dc.ChainKava))
+	if cfg.OtherChain != dc.ChainEth && cfg.OtherChain != dc.ChainKava {
+		panic(fmt.Sprintf("other chain only supports %s, %s", dc.ChainEth, dc.ChainKava))
 	}
 	if cfg.OtherChainConfirmNum <= 0 {
 		panic("other_chain_confirm_num should be larger than 0")
@@ -365,7 +365,13 @@ func (cfg *Config) Validate() {
 	cfg.ChainConfig.Validate()
 	cfg.BnbConfig.Validate()
 	cfg.AdminConfig.Validate()
-	cfg.KavaConfig.Validate()
+	// Validate the secondary chain's config
+	switch cfg.ChainConfig.OtherChain {
+	case dc.ChainEth:
+		cfg.EthConfig.Validate()
+	case dc.ChainKava:
+		cfg.KavaConfig.Validate()
+	}
 	cfg.LogConfig.Validate()
 }
 

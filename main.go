@@ -163,9 +163,6 @@ func main() {
 			return
 		}
 		otherExecutor = kava.NewExecutor(config.KavaConfig.RpcAddr, client.ChainNetwork(kavaNetwork), config.KavaConfig)
-	default:
-		panic(fmt.Sprintf("err: unsupported other chain %v.", config.ChainConfig.OtherChain))
-		return
 	}
 
 	dp := deputy.NewDeputy(db, config, bnbExecutor, otherExecutor)
