@@ -24,7 +24,7 @@ require (
 	github.com/howeyc/fsnotify v0.9.0 // indirect
 	github.com/influxdata/influxdb v1.7.7 // indirect
 	github.com/jinzhu/gorm v1.9.10
-	github.com/kava-labs/go-sdk v0.0.0-20200324054957-072cb72826a3
+	github.com/kava-labs/go-sdk v0.0.0-20200330060952-213674bfeb97
 	github.com/kava-labs/kava v0.4.2-0.20200329183728-2721ba3889fa
 	github.com/mattn/go-sqlite3 v1.11.0 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
