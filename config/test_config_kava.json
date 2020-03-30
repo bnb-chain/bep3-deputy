@@ -6,8 +6,8 @@
     "max_other_kept_block_height": 200000
   },
   "alert_config": {
-    "telegram_bot_id": "1124405624:AAGk_Oq6i4VVjv6iIvbRRYcS7mYoWZXDsyk",
-    "telegram_chat_id": "-470118904",
+    "telegram_bot_id": "your_bot_id",
+    "telegram_chat_id": "your_chat_id",
     "bnb_block_update_time_out": 60,
     "other_chain_block_update_time_out": 600,
     "reconciliation_diff_amount": "10"
