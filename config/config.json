@@ -86,5 +86,17 @@
     "token_balance_alert_threshold": 10000000,
     "eth_balance_alert_threshold": 500000000000000000,
     "allowance_balance_alert_threshold": 1000000000
+  },
+  "kava_config": {
+    "key_type": "mnemonic",
+    "aws_region": "",
+    "aws_secret_name": "",
+    "mnemonic": "your mnemonic word",
+    "rpc_addr": "tcp://localhost:26657",
+    "symbol": "bnb",
+    "deputy_addr": "your deputy address",
+    "fetch_interval": 2,
+    "token_balance_alert_threshold": 10000,
+    "kava_balance_alert_threshold": 10000
   }
 }

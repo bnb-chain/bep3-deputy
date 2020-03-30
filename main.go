@@ -20,7 +20,7 @@ import (
 	"github.com/binance-chain/bep3-deputy/common"
 	"github.com/binance-chain/bep3-deputy/deputy"
 	"github.com/binance-chain/bep3-deputy/executor/bnb"
-
+	"github.com/binance-chain/bep3-deputy/executor/eth"
 	"github.com/binance-chain/bep3-deputy/executor/kava"
 	"github.com/binance-chain/bep3-deputy/observer"
 	"github.com/binance-chain/bep3-deputy/store"
@@ -66,14 +66,6 @@ func initFlags() {
 
 func main() {
 	initFlags()
-
-	kavaNetwork := viper.GetInt(flagKavaNetwork)
-	if kavaNetwork != int(types.TestNetwork) && kavaNetwork != int(types.ProdNetwork) {
-		printUsage()
-		return
-	}
-	// we set kava chain network type first because we need to parse kava chain address from config
-	types.Network = types.ChainNetwork(kavaNetwork)
 
 	bnbNetwork := viper.GetInt(flagBnbNetwork)
 	if bnbNetwork != int(types.TestNetwork) && bnbNetwork != int(types.ProdNetwork) {
@@ -155,12 +147,31 @@ func main() {
 	store.InitTables(db)
 
 	bnbExecutor := bnb.NewExecutor(config.BnbConfig.RpcAddr, types.ChainNetwork(bnbNetwork), config.BnbConfig)
-	kavaExecutor := kava.NewExecutor(config.KavaConfig.RpcAddr, client.ChainNetwork(kavaNetwork), config.KavaConfig)
 
-	dp := deputy.NewDeputy(db, config, bnbExecutor, kavaExecutor)
+	var otherExecutor common.Executor
+	switch config.ChainConfig.OtherChain {
+	case common.ChainEth:
+		if config.EthConfig.SwapType == common.EthSwapTypeEth {
+			otherExecutor = eth.NewEthExecutor(config.EthConfig.Provider, config.EthConfig.SwapContractAddr, config)
+		} else {
+			otherExecutor = eth.NewErc20Executor(config.EthConfig.Provider, config.EthConfig.SwapContractAddr, config)
+		}
+	case common.ChainKava:
+		kavaNetwork := viper.GetInt(flagKavaNetwork)
+		if kavaNetwork != int(types.TestNetwork) && kavaNetwork != int(types.ProdNetwork) {
+			printUsage()
+			return
+		}
+		otherExecutor = kava.NewExecutor(config.KavaConfig.RpcAddr, client.ChainNetwork(kavaNetwork), config.KavaConfig)
+	default:
+		panic(fmt.Sprintf("err: unsupported other chain %v.", config.ChainConfig.OtherChain))
+		return
+	}
+
+	dp := deputy.NewDeputy(db, config, bnbExecutor, otherExecutor)
 	dp.Start()
 
-	ob := observer.NewObserver(db, config, bnbExecutor, kavaExecutor)
+	ob := observer.NewObserver(db, config, bnbExecutor, otherExecutor)
 	ob.Start()
 
 	adm := admin.NewAdmin(config, dp)
