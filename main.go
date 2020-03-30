@@ -8,10 +8,12 @@ import (
 	"path/filepath"
 
 	"github.com/binance-chain/go-sdk/common/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/kava-labs/go-sdk/client"
+	"github.com/kava-labs/kava/app"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -74,6 +76,11 @@ func main() {
 	}
 	// we set binance chain network type first because we need to parse binance chain address from config
 	types.Network = types.ChainNetwork(bnbNetwork)
+
+	// we set kava address prefixes first because we need to parse kava chain address from config
+	kavaConfig := sdk.GetConfig()
+	app.SetBech32AddressPrefixes(kavaConfig)
+	kavaConfig.Seal()
 
 	configType := viper.GetString(flagConfigType)
 	if configType == "" {

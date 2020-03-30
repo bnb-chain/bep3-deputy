@@ -6,10 +6,7 @@ import (
 	"io/ioutil"
 	"math/big"
 
-	"github.com/kava-labs/kava/app"
-
 	"github.com/binance-chain/go-sdk/common/types"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -384,10 +381,6 @@ func ParseConfigFromJson(content string) *Config {
 }
 
 func ParseConfigFromFile(filePath string) *Config {
-	kavaConfig := sdk.GetConfig()
-	app.SetBech32AddressPrefixes(kavaConfig)
-	kavaConfig.Seal()
-
 	bz, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		panic(err)

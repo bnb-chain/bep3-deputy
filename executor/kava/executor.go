@@ -12,18 +12,14 @@ import (
 	"sync"
 	"time"
 
-	// Cosmos-SDK, Tendermint, Ethereum
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	ec "github.com/ethereum/go-ethereum/common"
-	"github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tendermint/libs/common"
-
-	// Kava
 	"github.com/kava-labs/go-sdk/client"
 	"github.com/kava-labs/kava/app"
 	bep3 "github.com/kava-labs/kava/x/bep3/types"
+	"github.com/tendermint/go-amino"
+	cmn "github.com/tendermint/tendermint/libs/common"
 
-	// Bep3-deputy
 	"github.com/binance-chain/bep3-deputy/common"
 	"github.com/binance-chain/bep3-deputy/store"
 	"github.com/binance-chain/bep3-deputy/util"
