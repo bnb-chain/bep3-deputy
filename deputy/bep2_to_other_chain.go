@@ -133,8 +133,8 @@ func (deputy *Deputy) sendOtherHTLT(swap *store.Swap) (string, error) {
 			}
 			return "", fmt.Errorf(errMsg)
 		}
-		util.Logger.Infof("send chain %s HTLT tx success, bnb_swap_id=%s, tx_hash=%s", deputy.OtherExecutor.GetChain(),
-			swap.BnbChainSwapId, txHash)
+		util.Logger.Infof("send chain %s HTLT tx success, other_chain_swap_id=%s, tx_hash=%s", deputy.OtherExecutor.GetChain(),
+			swap.OtherChainSwapId, txHash)
 
 		txSent.TxHash = txHash
 

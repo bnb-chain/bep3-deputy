@@ -8,9 +8,12 @@ import (
 	"path/filepath"
 
 	"github.com/binance-chain/go-sdk/common/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/kava-labs/go-sdk/client"
+	"github.com/kava-labs/kava/app"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -20,6 +23,7 @@ import (
 	"github.com/binance-chain/bep3-deputy/deputy"
 	"github.com/binance-chain/bep3-deputy/executor/bnb"
 	"github.com/binance-chain/bep3-deputy/executor/eth"
+	"github.com/binance-chain/bep3-deputy/executor/kava"
 	"github.com/binance-chain/bep3-deputy/observer"
 	"github.com/binance-chain/bep3-deputy/store"
 	"github.com/binance-chain/bep3-deputy/util"
@@ -30,6 +34,7 @@ const flagConfigAwsRegion = "aws-region"
 const flagConfigAwsSecretKey = "aws-secret-key"
 const flagConfigPath = "config-path"
 const flagBnbNetwork = "bnb-network"
+const flagKavaNetwork = "kava-network"
 
 const ConfigTypeLocal = "local"
 const ConfigTypeAws = "aws"
@@ -54,6 +59,7 @@ func initFlags() {
 	flag.String(flagConfigAwsRegion, "", "aws s3 region")
 	flag.String(flagConfigAwsSecretKey, "", "aws s3 secret key")
 	flag.Int(flagBnbNetwork, int(types.TestNetwork), "binance chain network type")
+	flag.Int(flagKavaNetwork, int(types.TestNetwork), "kava network type")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
@@ -70,6 +76,11 @@ func main() {
 	}
 	// we set binance chain network type first because we need to parse binance chain address from config
 	types.Network = types.ChainNetwork(bnbNetwork)
+
+	// we set kava address prefixes first because we need to parse kava chain address from config
+	kavaConfig := sdk.GetConfig()
+	app.SetBech32AddressPrefixes(kavaConfig)
+	kavaConfig.Seal()
 
 	configType := viper.GetString(flagConfigType)
 	if configType == "" {
@@ -144,17 +155,27 @@ func main() {
 
 	bnbExecutor := bnb.NewExecutor(config.BnbConfig.RpcAddr, types.ChainNetwork(bnbNetwork), config.BnbConfig)
 
-	var ethExecutor common.Executor
-	if config.EthConfig.SwapType == common.EthSwapTypeEth {
-		ethExecutor = eth.NewEthExecutor(config.EthConfig.Provider, config.EthConfig.SwapContractAddr, config)
-	} else {
-		ethExecutor = eth.NewErc20Executor(config.EthConfig.Provider, config.EthConfig.SwapContractAddr, config)
+	var otherExecutor common.Executor
+	switch config.ChainConfig.OtherChain {
+	case common.ChainEth:
+		if config.EthConfig.SwapType == common.EthSwapTypeEth {
+			otherExecutor = eth.NewEthExecutor(config.EthConfig.Provider, config.EthConfig.SwapContractAddr, config)
+		} else {
+			otherExecutor = eth.NewErc20Executor(config.EthConfig.Provider, config.EthConfig.SwapContractAddr, config)
+		}
+	case common.ChainKava:
+		kavaNetwork := viper.GetInt(flagKavaNetwork)
+		if kavaNetwork != int(types.TestNetwork) && kavaNetwork != int(types.ProdNetwork) {
+			printUsage()
+			return
+		}
+		otherExecutor = kava.NewExecutor(config.KavaConfig.RpcAddr, client.ChainNetwork(kavaNetwork), config.KavaConfig)
 	}
 
-	dp := deputy.NewDeputy(db, config, bnbExecutor, ethExecutor)
+	dp := deputy.NewDeputy(db, config, bnbExecutor, otherExecutor)
 	dp.Start()
 
-	ob := observer.NewObserver(db, config, bnbExecutor, ethExecutor)
+	ob := observer.NewObserver(db, config, bnbExecutor, otherExecutor)
 	ob.Start()
 
 	adm := admin.NewAdmin(config, dp)
