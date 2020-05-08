@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -87,10 +86,6 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 		var parsedTx sdk.Tx
 		err := executor.Cdc.UnmarshalBinaryLengthPrefixed(t, &parsedTx)
 		if err != nil {
-			return nil, err
-		}
-
-		if err != nil {
 			util.Logger.Errorf("parse tx error, err=%s", err.Error())
 			continue
 		}
@@ -110,11 +105,21 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 				signer := msg.GetSigners()[0]
 				randomNumberHash := hex.EncodeToString(realMsg.RandomNumberHash)
 
-				// Regex matches (key, value) for swap ID in logs
-				m := regexp.MustCompile(`{"key":"atomic_swap_id","value":"[a-zA-Z0-9]{64}"}`)
-				res := m.FindString(txResult.Log)
-				// Trim result prefix and suffix to isolate swap ID
-				swapID := res[33:97]
+				// Parse atomic_swap_id from create_atomic_swap event
+				var swapID string
+				for _, event := range txResult.Events {
+					if event.GetType() == "create_atomic_swap" {
+						for _, attribute := range event.GetAttributes() {
+							if string(attribute.GetKey()) == "atomic_swap_id" {
+								swapID = string(attribute.GetValue())
+							}
+						}
+					}
+				}
+				if len(strings.TrimSpace(swapID)) == 0 {
+					util.Logger.Errorf("err='atomic_swap_id' event attribute not found")
+					continue
+				}
 
 				txLog := store.TxLog{
 					Chain:  common.ChainKava,
