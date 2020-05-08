@@ -12,13 +12,14 @@ import (
 	"sync"
 	"time"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	ec "github.com/ethereum/go-ethereum/common"
+	sdk "github.com/kava-labs/cosmos-sdk/types"
 	"github.com/kava-labs/go-sdk/client"
-	"github.com/kava-labs/kava/app"
-	bep3 "github.com/kava-labs/kava/x/bep3/types"
+	"github.com/kava-labs/go-sdk/kava"
+	kavaMsg "github.com/kava-labs/go-sdk/kava/msgs"
+	"github.com/kava-labs/go-sdk/kava/types"
+	tmbytes "github.com/kava-labs/tendermint/libs/bytes"
 	"github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tendermint/libs/common"
 
 	"github.com/binance-chain/bep3-deputy/common"
 	"github.com/binance-chain/bep3-deputy/store"
@@ -41,10 +42,10 @@ type Executor struct {
 
 // NewExecutor creates a new Executor
 func NewExecutor(rpcAddr string, networkType client.ChainNetwork, cfg *util.KavaConfig) *Executor {
-	cdc := app.MakeCodec()
+	cdc := kava.MakeCodec()
 
 	// Set up Kava HTTP client and set codec
-	kava := client.NewKavaClient(cdc, cfg.Mnemonic, app.Bip44CoinType, cfg.RpcAddr, networkType)
+	kava := client.NewKavaClient(cdc, cfg.Mnemonic, kava.Bip44CoinType, cfg.RpcAddr, networkType)
 	kava.Keybase.SetCodec(cdc)
 
 	return &Executor{
@@ -74,9 +75,9 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 
 	txLogs := make([]*store.TxLog, 0)
 
-	blockHash := hex.EncodeToString(block.BlockMeta.BlockID.Hash)
+	blockHash := hex.EncodeToString(block.BlockID.Hash)
 	for idx, t := range block.Block.Data.Txs {
-		txResult := blockResults.Results.DeliverTx[idx]
+		txResult := blockResults.TxsResults[idx]
 		if txResult.Code != 0 {
 			continue
 		}
@@ -97,7 +98,7 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 		msgs := parsedTx.GetMsgs()
 		for _, msg := range msgs {
 			switch realMsg := msg.(type) {
-			case bep3.MsgCreateAtomicSwap:
+			case kavaMsg.MsgCreateAtomicSwap:
 				if !realMsg.CrossChain {
 					continue
 				}
@@ -136,7 +137,7 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 					BlockHash: blockHash,
 				}
 				txLogs = append(txLogs, &txLog)
-			case bep3.MsgClaimAtomicSwap:
+			case kavaMsg.MsgClaimAtomicSwap:
 				signer := msg.GetSigners()[0]
 				swapID := hex.EncodeToString(realMsg.SwapID)
 				randomNum := hex.EncodeToString(realMsg.RandomNumber)
@@ -154,7 +155,7 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 					BlockHash: blockHash,
 				}
 				txLogs = append(txLogs, &txLog)
-			case bep3.MsgRefundAtomicSwap:
+			case kavaMsg.MsgRefundAtomicSwap:
 				signer := msg.GetSigners()[0]
 				swapID := hex.EncodeToString(realMsg.SwapID)
 
@@ -177,8 +178,8 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 
 	blockAndTxLogs := &common.BlockAndTxLogs{
 		Height:          block.Block.Height,
-		BlockHash:       block.BlockMeta.BlockID.Hash.String(),
-		ParentBlockHash: block.BlockMeta.Header.LastBlockID.Hash.String(),
+		BlockHash:       block.BlockID.Hash.String(),
+		ParentBlockHash: block.Block.Header.LastBlockID.Hash.String(),
 		BlockTime:       block.Block.Time.Unix(),
 		TxLogs:          txLogs,
 	}
@@ -210,12 +211,12 @@ func (executor *Executor) HTLT(randomNumberHash ec.Hash, timestamp int64, height
 
 	fromAddr := executor.Client.Keybase.GetAddr()
 
-	createMsg := bep3.NewMsgCreateAtomicSwap(
+	createMsg := kavaMsg.NewMsgCreateAtomicSwap(
 		fromAddr,
 		recipient,
 		otherChainRecipientAddr,
 		otherChainSenderAddr,
-		cmn.HexBytes(randomNumberHash.Bytes()),
+		tmbytes.HexBytes(randomNumberHash.Bytes()),
 		timestamp,
 		outCoin,
 		fmt.Sprintf("%d%s", outAmount.Int64(), executor.Config.Symbol),
@@ -251,10 +252,10 @@ func (executor *Executor) Claim(swapId ec.Hash, randomNumber ec.Hash) (string, *
 
 	trimmedRandomNumber := bytes.Trim(randomNumber.Bytes(), "\x00")
 
-	claimMsg := bep3.NewMsgClaimAtomicSwap(
+	claimMsg := kavaMsg.NewMsgClaimAtomicSwap(
 		executor.DeputyAddress,
-		cmn.HexBytes(swapId.Bytes()),
-		cmn.HexBytes(trimmedRandomNumber),
+		tmbytes.HexBytes(swapId.Bytes()),
+		tmbytes.HexBytes(trimmedRandomNumber),
 	)
 
 	res, err := executor.Client.Broadcast(claimMsg, client.Sync)
@@ -278,9 +279,9 @@ func (executor *Executor) Refund(swapId ec.Hash) (string, *common.Error) {
 		return "", common.NewError(errors.New("Err: key missing"), false)
 	}
 
-	refundMsg := bep3.NewMsgRefundAtomicSwap(
+	refundMsg := kavaMsg.NewMsgRefundAtomicSwap(
 		executor.DeputyAddress,
-		cmn.HexBytes(swapId.Bytes()),
+		tmbytes.HexBytes(swapId.Bytes()),
 	)
 
 	res, err := executor.Client.Broadcast(refundMsg, client.Sync)
@@ -311,13 +312,13 @@ func (executor *Executor) GetSentTxStatus(hash string) store.TxStatus {
 }
 
 // QuerySwap queries kava for an AtomicSwap
-func (executor *Executor) QuerySwap(swapId []byte) (swap bep3.AtomicSwap, isExist bool, err error) {
-	swap, err = executor.Client.GetSwapByID(cmn.HexBytes(swapId))
+func (executor *Executor) QuerySwap(swapId []byte) (swap types.AtomicSwap, isExist bool, err error) {
+	swap, err = executor.Client.GetSwapByID(tmbytes.HexBytes(swapId))
 	if err != nil {
-		if strings.Contains(err.Error(), "Not found") {
-			return bep3.AtomicSwap{}, false, nil
+		if strings.Contains(strings.ToLower(err.Error()), "not found") {
+			return types.AtomicSwap{}, false, nil
 		}
-		return bep3.AtomicSwap{}, false, err
+		return types.AtomicSwap{}, false, err
 	}
 
 	return swap, true, nil
@@ -378,7 +379,7 @@ func (executor *Executor) Claimable(swapId ec.Hash) (bool, error) {
 		return false, err
 	}
 
-	if swap.Status == bep3.Open && status.SyncInfo.LatestBlockHeight < swap.ExpireHeight {
+	if swap.Status == types.Open && status.SyncInfo.LatestBlockHeight < swap.ExpireHeight {
 		return true, nil
 	}
 	return false, nil
@@ -399,7 +400,7 @@ func (executor *Executor) Refundable(swapId ec.Hash) (bool, error) {
 		return false, err
 	}
 
-	if swap.Status == bep3.Open && status.SyncInfo.LatestBlockHeight >= swap.ExpireHeight {
+	if swap.Status == types.Open && status.SyncInfo.LatestBlockHeight >= swap.ExpireHeight {
 		return true, nil
 	}
 	return false, nil
@@ -436,7 +437,7 @@ func (executor *Executor) CalcSwapId(randomNumberHash ec.Hash, sender string, se
 	if err != nil {
 		return nil, err
 	}
-	return bep3.CalculateSwapID(randomNumberHash[:], senderAddr, senderOtherChain), nil
+	return kava.CalculateSwapID(randomNumberHash[:], senderAddr, senderOtherChain), nil
 }
 
 // IsSameAddress checks for equality between two addresses
@@ -494,5 +495,5 @@ func (executor *Executor) GetBalanceAlertMsg() (string, error) {
 }
 
 func isInvalidSequenceError(err string) bool {
-	return strings.Contains(err, "Invalid sequence")
+	return strings.Contains(strings.ToLower(err), "invalid sequence")
 }
