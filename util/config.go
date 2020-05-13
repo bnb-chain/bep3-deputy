@@ -7,8 +7,8 @@ import (
 	"math/big"
 
 	"github.com/binance-chain/go-sdk/common/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	sdk "github.com/kava-labs/cosmos-sdk/types"
 
 	dc "github.com/binance-chain/bep3-deputy/common"
 )

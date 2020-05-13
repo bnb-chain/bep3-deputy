@@ -52,11 +52,12 @@ func (ob *Observer) fetch(executor common.Executor, startHeight int64) {
 
 		err := ob.fetchBlock(executor, curBlockLog.Height, nextHeight, curBlockLog.BlockHash)
 		if err != nil {
-			if strings.Contains(err.Error(), "Height must be less than or equal to the current blockchain height") ||
-				strings.Contains(err.Error(), "not found") {
+			normalizedErr := strings.ToLower(err.Error())
+			if strings.Contains(normalizedErr, "height must be less than or equal to the current blockchain height") ||
+				strings.Contains(normalizedErr, "not found") {
 				util.Logger.Infof("try to get ahead block, chain=%s, height=%d", executor.GetChain(), nextHeight)
 			} else {
-				util.Logger.Error(err.Error())
+				util.Logger.Error(normalizedErr)
 			}
 
 			time.Sleep(executor.GetFetchInterval())

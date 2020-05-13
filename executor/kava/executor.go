@@ -6,19 +6,18 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	ec "github.com/ethereum/go-ethereum/common"
+	sdk "github.com/kava-labs/cosmos-sdk/types"
 	"github.com/kava-labs/go-sdk/client"
-	"github.com/kava-labs/kava/app"
-	bep3 "github.com/kava-labs/kava/x/bep3/types"
+	"github.com/kava-labs/go-sdk/kava"
+	"github.com/kava-labs/go-sdk/kava/bep3"
+	tmbytes "github.com/kava-labs/tendermint/libs/bytes"
 	"github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tendermint/libs/common"
 
 	"github.com/binance-chain/bep3-deputy/common"
 	"github.com/binance-chain/bep3-deputy/store"
@@ -41,15 +40,15 @@ type Executor struct {
 
 // NewExecutor creates a new Executor
 func NewExecutor(rpcAddr string, networkType client.ChainNetwork, cfg *util.KavaConfig) *Executor {
-	cdc := app.MakeCodec()
+	cdc := kava.MakeCodec()
 
 	// Set up Kava HTTP client and set codec
-	kava := client.NewKavaClient(cdc, cfg.Mnemonic, app.Bip44CoinType, cfg.RpcAddr, networkType)
-	kava.Keybase.SetCodec(cdc)
+	kavaClient := client.NewKavaClient(cdc, cfg.Mnemonic, kava.Bip44CoinType, cfg.RpcAddr, networkType)
+	kavaClient.Keybase.SetCodec(cdc)
 
 	return &Executor{
 		Config:        cfg,
-		Client:        kava,
+		Client:        kavaClient,
 		Cdc:           cdc,
 		DeputyAddress: cfg.DeputyAddr,
 	}
@@ -74,9 +73,9 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 
 	txLogs := make([]*store.TxLog, 0)
 
-	blockHash := hex.EncodeToString(block.BlockMeta.BlockID.Hash)
+	blockHash := hex.EncodeToString(block.BlockID.Hash)
 	for idx, t := range block.Block.Data.Txs {
-		txResult := blockResults.Results.DeliverTx[idx]
+		txResult := blockResults.TxsResults[idx]
 		if txResult.Code != 0 {
 			continue
 		}
@@ -85,10 +84,6 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 
 		var parsedTx sdk.Tx
 		err := executor.Cdc.UnmarshalBinaryLengthPrefixed(t, &parsedTx)
-		if err != nil {
-			return nil, err
-		}
-
 		if err != nil {
 			util.Logger.Errorf("parse tx error, err=%s", err.Error())
 			continue
@@ -109,11 +104,21 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 				signer := msg.GetSigners()[0]
 				randomNumberHash := hex.EncodeToString(realMsg.RandomNumberHash)
 
-				// Regex matches (key, value) for swap ID in logs
-				m := regexp.MustCompile(`{"key":"atomic_swap_id","value":"[a-zA-Z0-9]{64}"}`)
-				res := m.FindString(txResult.Log)
-				// Trim result prefix and suffix to isolate swap ID
-				swapID := res[33:97]
+				// Parse swap ID from create atomic swap event
+				var swapID string
+				for _, event := range txResult.Events {
+					if event.GetType() == "create_atomic_swap" {
+						for _, attribute := range event.GetAttributes() {
+							if string(attribute.GetKey()) == "atomic_swap_id" {
+								swapID = string(attribute.GetValue())
+							}
+						}
+					}
+				}
+				if len(strings.TrimSpace(swapID)) == 0 {
+					util.Logger.Errorf("err='atomic_swap_id' event attribute not found")
+					continue
+				}
 
 				txLog := store.TxLog{
 					Chain:  common.ChainKava,
@@ -177,8 +182,8 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 
 	blockAndTxLogs := &common.BlockAndTxLogs{
 		Height:          block.Block.Height,
-		BlockHash:       block.BlockMeta.BlockID.Hash.String(),
-		ParentBlockHash: block.BlockMeta.Header.LastBlockID.Hash.String(),
+		BlockHash:       block.BlockID.Hash.String(),
+		ParentBlockHash: block.Block.Header.LastBlockID.Hash.String(),
 		BlockTime:       block.Block.Time.Unix(),
 		TxLogs:          txLogs,
 	}
@@ -215,7 +220,7 @@ func (executor *Executor) HTLT(randomNumberHash ec.Hash, timestamp int64, height
 		recipient,
 		otherChainRecipientAddr,
 		otherChainSenderAddr,
-		cmn.HexBytes(randomNumberHash.Bytes()),
+		tmbytes.HexBytes(randomNumberHash.Bytes()),
 		timestamp,
 		outCoin,
 		fmt.Sprintf("%d%s", outAmount.Int64(), executor.Config.Symbol),
@@ -253,8 +258,8 @@ func (executor *Executor) Claim(swapId ec.Hash, randomNumber ec.Hash) (string, *
 
 	claimMsg := bep3.NewMsgClaimAtomicSwap(
 		executor.DeputyAddress,
-		cmn.HexBytes(swapId.Bytes()),
-		cmn.HexBytes(trimmedRandomNumber),
+		tmbytes.HexBytes(swapId.Bytes()),
+		tmbytes.HexBytes(trimmedRandomNumber),
 	)
 
 	res, err := executor.Client.Broadcast(claimMsg, client.Sync)
@@ -280,7 +285,7 @@ func (executor *Executor) Refund(swapId ec.Hash) (string, *common.Error) {
 
 	refundMsg := bep3.NewMsgRefundAtomicSwap(
 		executor.DeputyAddress,
-		cmn.HexBytes(swapId.Bytes()),
+		tmbytes.HexBytes(swapId.Bytes()),
 	)
 
 	res, err := executor.Client.Broadcast(refundMsg, client.Sync)
@@ -312,9 +317,9 @@ func (executor *Executor) GetSentTxStatus(hash string) store.TxStatus {
 
 // QuerySwap queries kava for an AtomicSwap
 func (executor *Executor) QuerySwap(swapId []byte) (swap bep3.AtomicSwap, isExist bool, err error) {
-	swap, err = executor.Client.GetSwapByID(cmn.HexBytes(swapId))
+	swap, err = executor.Client.GetSwapByID(tmbytes.HexBytes(swapId))
 	if err != nil {
-		if strings.Contains(err.Error(), "Not found") {
+		if strings.Contains(strings.ToLower(err.Error()), "not found") {
 			return bep3.AtomicSwap{}, false, nil
 		}
 		return bep3.AtomicSwap{}, false, err
@@ -494,5 +499,5 @@ func (executor *Executor) GetBalanceAlertMsg() (string, error) {
 }
 
 func isInvalidSequenceError(err string) bool {
-	return strings.Contains(err, "Invalid sequence")
+	return strings.Contains(strings.ToLower(err), "invalid sequence")
 }
