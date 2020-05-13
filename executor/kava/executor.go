@@ -93,10 +93,6 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 		for _, msg := range msgs {
 			switch realMsg := msg.(type) {
 			case bep3.MsgCreateAtomicSwap:
-				if !realMsg.CrossChain {
-					continue
-				}
-
 				if len(realMsg.Amount) != 1 {
 					continue
 				}
@@ -130,11 +126,11 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 					ReceiverAddr:     realMsg.To.String(),
 					SenderOtherChain: realMsg.SenderOtherChain,
 					OtherChainAddr:   realMsg.RecipientOtherChain,
-					InAmount:         realMsg.ExpectedIncome,
+					InAmount:         realMsg.Amount.String(),
 					OutAmount:        strconv.FormatInt(realMsg.Amount[0].Amount.Int64(), 10),
 					OutCoin:          realMsg.Amount[0].Denom,
 					RandomNumberHash: randomNumberHash,
-					ExpireHeight:     realMsg.HeightSpan + height,
+					ExpireHeight:     int64(realMsg.HeightSpan) + height,
 					Timestamp:        realMsg.Timestamp,
 
 					Height:    height,
@@ -223,9 +219,7 @@ func (executor *Executor) HTLT(randomNumberHash ec.Hash, timestamp int64, height
 		tmbytes.HexBytes(randomNumberHash.Bytes()),
 		timestamp,
 		outCoin,
-		fmt.Sprintf("%d%s", outAmount.Int64(), executor.Config.Symbol),
-		heightSpan,
-		true,
+		uint64(heightSpan),
 	)
 
 	res, err := executor.Client.Broadcast(createMsg, client.Sync)
