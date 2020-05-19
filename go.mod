@@ -19,9 +19,9 @@ require (
 	github.com/howeyc/fsnotify v0.9.0 // indirect
 	github.com/influxdata/influxdb v1.7.7 // indirect
 	github.com/jinzhu/gorm v1.9.10
-	github.com/kava-labs/cosmos-sdk v0.34.4-0.20200506043356-5d772797f9a3
-	github.com/kava-labs/go-sdk v0.0.0-20200513005651-995ef55036ad
-	github.com/kava-labs/tendermint v0.33.4-0.20200506042050-c611c5308a53
+	github.com/kava-labs/cosmos-sdk v0.38.3-stable
+	github.com/kava-labs/go-sdk v0.0.0-20200519194114-a7e9ad215074
+	github.com/kava-labs/tendermint v0.33.3-stable
 	github.com/mattn/go-sqlite3 v1.11.0 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7
