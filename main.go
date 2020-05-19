@@ -165,7 +165,10 @@ func main() {
 		}
 	case common.ChainKava:
 		kavaNetwork := viper.GetInt(flagKavaNetwork)
-		if kavaNetwork != int(types.TestNetwork) && kavaNetwork != int(types.ProdNetwork) {
+		switch kavaNetwork {
+		case int(client.LocalNetwork), int(client.TestNetwork), int(client.ProdNetwork):
+			break
+		default:
 			printUsage()
 			return
 		}
