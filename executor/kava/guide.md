@@ -124,7 +124,7 @@ rm -rf deputy.db
 
 # Start deputy from `/build` dir:
 # --kava-network [0 for local chain ID 'testing' 1 for testnet chain ID 'kava-testnet-5000']
-./deputy --bnb-network 0 --kava-network 0 --config-type local --config-path "../config/test_config_kava.json"
+./deputy --bnb-network 0 --kava-network 1 --config-type local --config-path "../config/test_config_kava.json"
 ```
 
 # Transfer BNB from bnbchain to kava
