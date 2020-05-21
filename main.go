@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/binance-chain/go-sdk/common/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"

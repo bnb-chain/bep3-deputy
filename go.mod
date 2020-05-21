@@ -14,6 +14,7 @@ require (
 	github.com/ethereum/go-ethereum v1.9.10
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect
 	github.com/go-ole/go-ole v1.2.4 // indirect
+	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/mock v1.3.1
 	github.com/gorilla/mux v1.7.3
 	github.com/howeyc/fsnotify v0.9.0 // indirect

@@ -74,10 +74,10 @@
     "key_type": "mnemonic",
     "aws_region": "",
     "aws_secret_name": "",
-    "mnemonic": "fragile flip puzzle adjust mushroom gas minimum maid love coach brush cattle match analyst oak spell blur thunder unfair inch mother park toilet toddler",
+    "mnemonic": "slab twist stumble inmate predict parent repair crystal celery swarm memory loan rabbit blanket shell talk attend charge inside denial harbor music board steak",
     "rpc_addr": "tcp://localhost:26657",
     "symbol": "bnb",
-    "deputy_addr": "kava1l0xsq2z7gqd7yly0g40y5836g0appumark77ny",
+    "deputy_addr": "kava1sl8glhaa9f9tep0d9h8gdcfmwcatghtdrfcd2x",
     "fetch_interval": 2,
     "token_balance_alert_threshold": 10000,
     "kava_balance_alert_threshold": 10000

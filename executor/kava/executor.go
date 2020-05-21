@@ -85,6 +85,10 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 		var parsedTx sdk.Tx
 		err := executor.Cdc.UnmarshalBinaryLengthPrefixed(t, &parsedTx)
 		if err != nil {
+			return nil, err
+		}
+
+		if err != nil {
 			util.Logger.Errorf("parse tx error, err=%s", err.Error())
 			continue
 		}
@@ -93,6 +97,10 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 		for _, msg := range msgs {
 			switch realMsg := msg.(type) {
 			case bep3.MsgCreateAtomicSwap:
+				if !realMsg.CrossChain {
+					continue
+				}
+
 				if len(realMsg.Amount) != 1 {
 					continue
 				}
@@ -132,7 +140,6 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 					RandomNumberHash: randomNumberHash,
 					ExpireHeight:     int64(realMsg.HeightSpan) + height,
 					Timestamp:        realMsg.Timestamp,
-
 					Height:    height,
 					BlockHash: blockHash,
 				}
