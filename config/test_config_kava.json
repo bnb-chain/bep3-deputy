@@ -24,7 +24,7 @@
     "bnb_max_deputy_out_amount": 20000000000,
     "bnb_ratio": "1",
     "bnb_fixed_fee": 1000,
-    "bnb_start_height": 74287605,
+    "bnb_start_height": 81355680,
 
     "other_chain": "KAVA",
     "other_chain_confirm_num": 2,
@@ -74,10 +74,10 @@
     "key_type": "mnemonic",
     "aws_region": "",
     "aws_secret_name": "",
-    "mnemonic": "slab twist stumble inmate predict parent repair crystal celery swarm memory loan rabbit blanket shell talk attend charge inside denial harbor music board steak",
+    "mnemonic": "fragile flip puzzle adjust mushroom gas minimum maid love coach brush cattle match analyst oak spell blur thunder unfair inch mother park toilet toddler",
     "rpc_addr": "tcp://localhost:26657",
     "symbol": "bnb",
-    "deputy_addr": "kava1sl8glhaa9f9tep0d9h8gdcfmwcatghtdrfcd2x",
+    "deputy_addr": "kava1l0xsq2z7gqd7yly0g40y5836g0appumark77ny",
     "fetch_interval": 2,
     "token_balance_alert_threshold": 10000,
     "kava_balance_alert_threshold": 10000
