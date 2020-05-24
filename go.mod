@@ -20,7 +20,7 @@ require (
 	github.com/influxdata/influxdb v1.7.7 // indirect
 	github.com/jinzhu/gorm v1.9.10
 	github.com/kava-labs/cosmos-sdk v0.38.3-stable.0.20200520223313-bfbe25d175da
-	github.com/kava-labs/go-sdk v0.0.0-20200520231708-eb1dfe538bb4
+	github.com/kava-labs/go-sdk v0.1.2
 	github.com/kava-labs/tendermint v0.33.4-0.20200520221629-77480532c622
 	github.com/mattn/go-sqlite3 v1.11.0 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect

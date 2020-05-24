@@ -344,7 +344,7 @@ func (executor *Executor) GetSwap(swapId ec.Hash) (*common.SwapRequest, error) {
 	return &common.SwapRequest{
 		Id:                  swapId,
 		RandomNumberHash:    ec.BytesToHash(swap.RandomNumberHash),
-		ExpireHeight:        swap.ExpireHeight,
+		ExpireHeight:        int64(swap.ExpireHeight),
 		SenderAddress:       swap.Sender.String(),
 		RecipientAddress:    swap.Recipient.String(),
 		OutAmount:           big.NewInt(swap.Amount[0].Amount.Int64()),
@@ -377,7 +377,7 @@ func (executor *Executor) Claimable(swapId ec.Hash) (bool, error) {
 		return false, err
 	}
 
-	if swap.Status == bep3.Open && status.SyncInfo.LatestBlockHeight < swap.ExpireHeight {
+	if swap.Status == bep3.Open && status.SyncInfo.LatestBlockHeight < int64(swap.ExpireHeight) {
 		return true, nil
 	}
 	return false, nil
@@ -398,7 +398,7 @@ func (executor *Executor) Refundable(swapId ec.Hash) (bool, error) {
 		return false, err
 	}
 
-	if swap.Status == bep3.Open && status.SyncInfo.LatestBlockHeight >= swap.ExpireHeight {
+	if swap.Status == bep3.Open && status.SyncInfo.LatestBlockHeight >= int64(swap.ExpireHeight) {
 		return true, nil
 	}
 	return false, nil
