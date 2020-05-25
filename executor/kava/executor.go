@@ -112,7 +112,7 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 					}
 				}
 				if len(strings.TrimSpace(swapID)) == 0 {
-					util.Logger.Errorf("err='atomic_swap_id' event attribute not found")
+					util.Logger.Errorf("atomic_swap_id event attribute not found")
 					continue
 				}
 
