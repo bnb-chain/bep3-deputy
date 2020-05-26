@@ -19,6 +19,7 @@ test_unit:
 
 # uses https://github.com/sasha-s/go-deadlock/ to detect potential deadlocks
 set_with_deadlock:
+	go get -u golang.org/x/tools/cmd/goimports
 	go get github.com/sasha-s/go-deadlock
 
 	find . -name "*.go" | xargs -n 1 sed -i.mutex_bak 's/sync.RWMutex/deadlock.RWMutex/'
