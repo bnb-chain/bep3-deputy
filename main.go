@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 
 	"github.com/binance-chain/go-sdk/common/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	sdk "github.com/kava-labs/cosmos-sdk/types"
 	"github.com/kava-labs/go-sdk/client"
-	"github.com/kava-labs/kava/app"
+	app "github.com/kava-labs/go-sdk/kava"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -165,7 +165,10 @@ func main() {
 		}
 	case common.ChainKava:
 		kavaNetwork := viper.GetInt(flagKavaNetwork)
-		if kavaNetwork != int(types.TestNetwork) && kavaNetwork != int(types.ProdNetwork) {
+		switch kavaNetwork {
+		case int(client.LocalNetwork), int(client.TestNetwork), int(client.ProdNetwork):
+			break
+		default:
 			printUsage()
 			return
 		}
