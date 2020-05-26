@@ -10,7 +10,6 @@ import (
 	sdk "github.com/kava-labs/cosmos-sdk/types"
 
 	"github.com/binance-chain/go-sdk/common/types"
-
 	"github.com/binance-chain/bep3-deputy/store"
 )
 
