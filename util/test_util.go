@@ -9,7 +9,7 @@ import (
 )
 
 func GetTestConfig() *Config {
-	config := ParseConfigFromFile("../config/test_config.json")
+	config := ParseConfigFromFile("../config/test_config_eth.json")
 	return config
 }
 

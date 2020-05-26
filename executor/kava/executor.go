@@ -85,10 +85,6 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 		var parsedTx sdk.Tx
 		err := executor.Cdc.UnmarshalBinaryLengthPrefixed(t, &parsedTx)
 		if err != nil {
-			return nil, err
-		}
-
-		if err != nil {
 			util.Logger.Errorf("parse tx error, err=%s", err.Error())
 			continue
 		}
@@ -97,10 +93,6 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 		for _, msg := range msgs {
 			switch realMsg := msg.(type) {
 			case bep3.MsgCreateAtomicSwap:
-				if !realMsg.CrossChain {
-					continue
-				}
-
 				if len(realMsg.Amount) != 1 {
 					continue
 				}
@@ -120,7 +112,7 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 					}
 				}
 				if len(strings.TrimSpace(swapID)) == 0 {
-					util.Logger.Errorf("err='atomic_swap_id' event attribute not found")
+					util.Logger.Errorf("atomic_swap_id event attribute not found")
 					continue
 				}
 
@@ -140,8 +132,8 @@ func (executor *Executor) GetBlockAndTxs(height int64) (*common.BlockAndTxLogs, 
 					RandomNumberHash: randomNumberHash,
 					ExpireHeight:     int64(realMsg.HeightSpan) + height,
 					Timestamp:        realMsg.Timestamp,
-					Height:    height,
-					BlockHash: blockHash,
+					Height:           height,
+					BlockHash:        blockHash,
 				}
 				txLogs = append(txLogs, &txLog)
 			case bep3.MsgClaimAtomicSwap:
@@ -351,7 +343,7 @@ func (executor *Executor) GetSwap(swapId ec.Hash) (*common.SwapRequest, error) {
 	return &common.SwapRequest{
 		Id:                  swapId,
 		RandomNumberHash:    ec.BytesToHash(swap.RandomNumberHash),
-		ExpireHeight:        swap.ExpireHeight,
+		ExpireHeight:        int64(swap.ExpireHeight),
 		SenderAddress:       swap.Sender.String(),
 		RecipientAddress:    swap.Recipient.String(),
 		OutAmount:           big.NewInt(swap.Amount[0].Amount.Int64()),
@@ -384,7 +376,7 @@ func (executor *Executor) Claimable(swapId ec.Hash) (bool, error) {
 		return false, err
 	}
 
-	if swap.Status == bep3.Open && status.SyncInfo.LatestBlockHeight < swap.ExpireHeight {
+	if swap.Status == bep3.Open && status.SyncInfo.LatestBlockHeight < int64(swap.ExpireHeight) {
 		return true, nil
 	}
 	return false, nil
@@ -405,7 +397,7 @@ func (executor *Executor) Refundable(swapId ec.Hash) (bool, error) {
 		return false, err
 	}
 
-	if swap.Status == bep3.Open && status.SyncInfo.LatestBlockHeight >= swap.ExpireHeight {
+	if swap.Status == bep3.Open && status.SyncInfo.LatestBlockHeight >= int64(swap.ExpireHeight) {
 		return true, nil
 	}
 	return false, nil
