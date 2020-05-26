@@ -9,9 +9,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	sdk "github.com/kava-labs/cosmos-sdk/types"
 
-	"github.com/binance-chain/go-sdk/common/types"
-
 	"github.com/binance-chain/bep3-deputy/store"
+	"github.com/binance-chain/go-sdk/common/types"
 )
 
 // chains supported now, if you want to add other chain, pls add chain name here

@@ -57,7 +57,7 @@ You can refer to [Developer guide](./spec/develop_guide.md) for more details.
 
 ## License
 
-Distributed under the Apache 2.0 License. See LICENSE for more information.
+Distributed under the [GNU Lesser General Public License v3.0](https://www.gnu.org/licenses/lgpl-3.0.en.html). See [LICENSE](LICENSE) for more information.
 
 ## Links
 
