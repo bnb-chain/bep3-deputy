@@ -40,7 +40,7 @@ const ConfigTypeLocal = "local"
 const ConfigTypeAws = "aws"
 
 func printUsage() {
-	fmt.Print("usage: ./deputy --bnb-network [0 for testnet, 1 for mainnet] --config-type [aws or local] --config-path config_file_path --aws-region region --aws-secret-key secret key\n")
+	fmt.Print("usage: ./deputy --bnb-network [0 for testnet, 1 for mainnet] --kava-network [0 for testnet, 1 for mainnet] --config-type [aws or local] --config-path config_file_path --aws-region region --aws-secret-key secret key\n")
 }
 
 func ensureDir(dir string) error {
