@@ -153,7 +153,7 @@ func main() {
 	// init db if tables do not exist
 	store.InitTables(db)
 
-	bnbExecutor := bnb.NewExecutor(config.BnbConfig.RpcAddr, types.ChainNetwork(bnbNetwork), config.BnbConfig)
+	bnbExecutor := bnb.NewExecutor(types.ChainNetwork(bnbNetwork), config.BnbConfig)
 
 	var otherExecutor common.Executor
 	switch config.ChainConfig.OtherChain {
@@ -172,7 +172,7 @@ func main() {
 			printUsage()
 			return
 		}
-		otherExecutor = kava.NewExecutor(config.KavaConfig.RpcAddr, client.ChainNetwork(kavaNetwork), config.KavaConfig)
+		otherExecutor = kava.NewExecutor(client.ChainNetwork(kavaNetwork), config.KavaConfig)
 	}
 
 	dp := deputy.NewDeputy(db, config, bnbExecutor, otherExecutor)
