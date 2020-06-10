@@ -34,13 +34,13 @@ type Executor struct {
 	DeputyAddress types.AccAddress
 }
 
-func NewExecutor(rpcAddr string, networkType types.ChainNetwork, cfg *util.BnbConfig) *Executor {
+func NewExecutor(networkType types.ChainNetwork, cfg *util.BnbConfig) *Executor {
 	keyManager, err := getKeyManager(cfg)
 	if err != nil {
 		panic(fmt.Sprintf("new key manager err, err=%s", err.Error()))
 	}
 
-	rpcClient := rpc.NewRPCClient(rpcAddr, networkType)
+	rpcClient := rpc.NewRPCClient(cfg.RpcAddr, networkType)
 	rpcClient.SetLogger(util.SdkLogger)
 
 	return &Executor{

@@ -139,7 +139,7 @@ func bep2(bnbNetwork int, configFile string) {
 		otherExecutor = eth.NewErc20Executor(config.EthConfig.Provider, config.EthConfig.SwapContractAddr, config)
 	}
 
-	bnbExecutor := bnb.NewExecutor(config.BnbConfig.RpcAddr, types.ChainNetwork(bnbNetwork), config.BnbConfig)
+	bnbExecutor := bnb.NewExecutor(types.ChainNetwork(bnbNetwork), config.BnbConfig)
 
 	timestamp := time.Now().Unix()
 	randomBytes := GetRandomBytes()
@@ -198,7 +198,7 @@ func erc20(bnbNetwork int, configFile string) {
 	} else {
 		otherExecutor = eth.NewErc20Executor(config.EthConfig.Provider, config.EthConfig.SwapContractAddr, config)
 	}
-	bnbExecutor := bnb.NewExecutor(config.BnbConfig.RpcAddr, types.ChainNetwork(bnbNetwork), config.BnbConfig)
+	bnbExecutor := bnb.NewExecutor(types.ChainNetwork(bnbNetwork), config.BnbConfig)
 
 	toOnOtherChain := common.HexToAddress("0x042ccc750E1099068622Bb521003F207297a40b0")
 	randomNum := GetRandomBytes()

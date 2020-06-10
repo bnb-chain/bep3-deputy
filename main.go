@@ -40,7 +40,7 @@ const ConfigTypeLocal = "local"
 const ConfigTypeAws = "aws"
 
 func printUsage() {
-	fmt.Print("usage: ./deputy --bnb-network [0 for testnet, 1 for mainnet] --config-type [aws or local] --config-path config_file_path --aws-region region --aws-secret-key secret key\n")
+	fmt.Print("usage: ./deputy --bnb-network [0 for testnet, 1 for mainnet] --kava-network [0 for testnet, 1 for mainnet] --config-type [aws or local] --config-path config_file_path --aws-region region --aws-secret-key secret key\n")
 }
 
 func ensureDir(dir string) error {
@@ -153,7 +153,7 @@ func main() {
 	// init db if tables do not exist
 	store.InitTables(db)
 
-	bnbExecutor := bnb.NewExecutor(config.BnbConfig.RpcAddr, types.ChainNetwork(bnbNetwork), config.BnbConfig)
+	bnbExecutor := bnb.NewExecutor(types.ChainNetwork(bnbNetwork), config.BnbConfig)
 
 	var otherExecutor common.Executor
 	switch config.ChainConfig.OtherChain {
@@ -172,7 +172,7 @@ func main() {
 			printUsage()
 			return
 		}
-		otherExecutor = kava.NewExecutor(config.KavaConfig.RpcAddr, client.ChainNetwork(kavaNetwork), config.KavaConfig)
+		otherExecutor = kava.NewExecutor(client.ChainNetwork(kavaNetwork), config.KavaConfig)
 	}
 
 	dp := deputy.NewDeputy(db, config, bnbExecutor, otherExecutor)
