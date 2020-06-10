@@ -16,7 +16,7 @@ import (
 	"github.com/kava-labs/go-sdk/client"
 	"github.com/kava-labs/go-sdk/kava"
 	"github.com/kava-labs/go-sdk/kava/bep3"
-	tmbytes "github.com/kava-labs/tendermint/libs/bytes"
+	"github.com/kava-labs/go-sdk/keys"
 	"github.com/tendermint/go-amino"
 
 	"github.com/binance-chain/bep3-deputy/common"
@@ -39,11 +39,16 @@ type Executor struct {
 }
 
 // NewExecutor creates a new Executor
-func NewExecutor(rpcAddr string, networkType client.ChainNetwork, cfg *util.KavaConfig) *Executor {
+func NewExecutor(networkType client.ChainNetwork, cfg *util.KavaConfig) *Executor {
 	cdc := kava.MakeCodec()
 
+	mnemonic, err := getMnemonic(cfg)
+	if err != nil {
+		panic(fmt.Sprintf("get kava mnemonic error, err=%s", err.Error()))
+	}
+
 	// Set up Kava HTTP client and set codec
-	kavaClient := client.NewKavaClient(cdc, cfg.Mnemonic, kava.Bip44CoinType, cfg.RpcAddr, networkType)
+	kavaClient := client.NewKavaClient(cdc, mnemonic, kava.Bip44CoinType, cfg.RpcAddr, networkType)
 	kavaClient.Keybase.SetCodec(cdc)
 
 	return &Executor{
@@ -52,6 +57,29 @@ func NewExecutor(rpcAddr string, networkType client.ChainNetwork, cfg *util.Kava
 		Cdc:           cdc,
 		DeputyAddress: cfg.DeputyAddr,
 	}
+}
+
+func getMnemonic(config *util.KavaConfig) (string, error) {
+	var mnemonic string
+	if config.KeyType == util.KeyTypeAWSMnemonic {
+		awsMnemonic, err := util.GetSecret(config.AWSSecretName, config.AWSRegion)
+		if err != nil {
+			return "", err
+		}
+		mnemonic = awsMnemonic
+	} else {
+		mnemonic = config.Mnemonic
+	}
+	return mnemonic, nil
+}
+
+func getKeyManager(config *util.KavaConfig) (keys.KeyManager, error) {
+	mnemonic, err := getMnemonic(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return keys.NewMnemonicKeyManager(mnemonic, kava.Bip44CoinType)
 }
 
 // GetChain gets the chain ID
@@ -204,8 +232,16 @@ func (executor *Executor) HTLT(randomNumberHash ec.Hash, timestamp int64, height
 
 	outCoin := sdk.NewCoins(sdk.NewInt64Coin(executor.Config.Symbol, outAmount.Int64()))
 
+	keyManager, err := getKeyManager(executor.Config)
+	if err != nil {
+		return "", common.NewError(err, false)
+	}
+	executor.Client.Keybase = keyManager
+	defer func() {
+		executor.Client.Keybase = nil
+	}()
 	if executor.Client.Keybase == nil {
-		return "", common.NewError(errors.New("Err: key missing"), false)
+		return "", common.NewError(errors.New("kava key missing"), false)
 	}
 
 	fromAddr := executor.Client.Keybase.GetAddr()
@@ -215,7 +251,7 @@ func (executor *Executor) HTLT(randomNumberHash ec.Hash, timestamp int64, height
 		recipient,
 		otherChainRecipientAddr,
 		otherChainSenderAddr,
-		tmbytes.HexBytes(randomNumberHash.Bytes()),
+		randomNumberHash.Bytes(),
 		timestamp,
 		outCoin,
 		uint64(heightSpan),
@@ -239,20 +275,28 @@ func (executor *Executor) GetFetchInterval() time.Duration {
 
 // Claim sends a MsgClaimAtomicSwap to kava
 func (executor *Executor) Claim(swapId ec.Hash, randomNumber ec.Hash) (string, *common.Error) {
-
 	executor.mutex.Lock()
 	defer executor.mutex.Unlock()
 
+	keyManager, err := getKeyManager(executor.Config)
+	if err != nil {
+		return "", common.NewError(err, false)
+	}
+	executor.Client.Keybase = keyManager
+	defer func() {
+		executor.Client.Keybase = nil
+	}()
+
 	if executor.Client.Keybase == nil {
-		return "", common.NewError(errors.New("Err: key missing"), false)
+		return "", common.NewError(errors.New("kava key missing"), false)
 	}
 
 	trimmedRandomNumber := bytes.Trim(randomNumber.Bytes(), "\x00")
 
 	claimMsg := bep3.NewMsgClaimAtomicSwap(
 		executor.DeputyAddress,
-		tmbytes.HexBytes(swapId.Bytes()),
-		tmbytes.HexBytes(trimmedRandomNumber),
+		swapId.Bytes(),
+		trimmedRandomNumber,
 	)
 
 	res, err := executor.Client.Broadcast(claimMsg, client.Sync)
@@ -268,17 +312,25 @@ func (executor *Executor) Claim(swapId ec.Hash, randomNumber ec.Hash) (string, *
 
 // Refund sends a MsgRefundAtomicSwap to kava
 func (executor *Executor) Refund(swapId ec.Hash) (string, *common.Error) {
-
 	executor.mutex.Lock()
 	defer executor.mutex.Unlock()
 
+	keyManager, err := getKeyManager(executor.Config)
+	if err != nil {
+		return "", common.NewError(err, false)
+	}
+	executor.Client.Keybase = keyManager
+	defer func() {
+		executor.Client.Keybase = nil
+	}()
+
 	if executor.Client.Keybase == nil {
-		return "", common.NewError(errors.New("Err: key missing"), false)
+		return "", common.NewError(errors.New("kava key missing"), false)
 	}
 
 	refundMsg := bep3.NewMsgRefundAtomicSwap(
 		executor.DeputyAddress,
-		tmbytes.HexBytes(swapId.Bytes()),
+		swapId.Bytes(),
 	)
 
 	res, err := executor.Client.Broadcast(refundMsg, client.Sync)
@@ -310,7 +362,7 @@ func (executor *Executor) GetSentTxStatus(hash string) store.TxStatus {
 
 // QuerySwap queries kava for an AtomicSwap
 func (executor *Executor) QuerySwap(swapId []byte) (swap bep3.AtomicSwap, isExist bool, err error) {
-	swap, err = executor.Client.GetSwapByID(tmbytes.HexBytes(swapId))
+	swap, err = executor.Client.GetSwapByID(swapId)
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "not found") {
 			return bep3.AtomicSwap{}, false, nil
