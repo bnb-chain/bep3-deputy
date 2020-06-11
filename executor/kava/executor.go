@@ -251,7 +251,7 @@ func (executor *Executor) HTLT(randomNumberHash ec.Hash, timestamp int64, height
 		recipient,
 		otherChainRecipientAddr,
 		otherChainSenderAddr,
-		randomNumberHash.Bytes(),
+		randomNumberHash[:],
 		timestamp,
 		outCoin,
 		uint64(heightSpan),
