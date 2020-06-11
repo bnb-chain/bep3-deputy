@@ -1,7 +1,6 @@
 package kava
 
 import (
-	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -292,12 +291,10 @@ func (executor *Executor) Claim(swapId ec.Hash, randomNumber ec.Hash) (string, *
 		return "", common.NewError(errors.New("kava key missing"), false)
 	}
 
-	trimmedRandomNumber := bytes.Trim(randomNumber.Bytes(), "\x00")
-
 	claimMsg := bep3.NewMsgClaimAtomicSwap(
 		executor.DeputyAddress,
-		swapId.Bytes(),
-		trimmedRandomNumber,
+		swapId[:],
+		randomNumber[:],
 	)
 
 	res, err := executor.Client.Broadcast(claimMsg, client.Sync)
@@ -331,7 +328,7 @@ func (executor *Executor) Refund(swapId ec.Hash) (string, *common.Error) {
 
 	refundMsg := bep3.NewMsgRefundAtomicSwap(
 		executor.DeputyAddress,
-		swapId.Bytes(),
+		swapId[:],
 	)
 
 	res, err := executor.Client.Broadcast(refundMsg, client.Sync)
@@ -376,13 +373,13 @@ func (executor *Executor) QuerySwap(swapId []byte) (swap bep3.AtomicSwap, isExis
 
 // HasSwap returns true if an AtomicSwap with this ID exists on kava
 func (executor *Executor) HasSwap(swapId ec.Hash) (bool, error) {
-	_, isExist, err := executor.QuerySwap(swapId.Bytes())
+	_, isExist, err := executor.QuerySwap(swapId[:])
 	return isExist, err
 }
 
 // GetSwap gets an AtomicSwap by its ID
 func (executor *Executor) GetSwap(swapId ec.Hash) (*common.SwapRequest, error) {
-	swap, isExist, err := executor.QuerySwap(swapId.Bytes())
+	swap, isExist, err := executor.QuerySwap(swapId[:])
 	if err != nil {
 		return nil, err
 	}
