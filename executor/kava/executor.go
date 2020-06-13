@@ -48,7 +48,6 @@ func NewExecutor(networkType client.ChainNetwork, cfg *util.KavaConfig) *Executo
 
 	// Set up Kava HTTP client and set codec
 	kavaClient := client.NewKavaClient(cdc, mnemonic, kava.Bip44CoinType, cfg.RpcAddr, networkType)
-	kavaClient.Keybase.SetCodec(cdc)
 
 	return &Executor{
 		Config:        cfg,
