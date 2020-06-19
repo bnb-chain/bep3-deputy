@@ -1,3 +1,5 @@
+// +build integration
+
 package kava
 
 import (
@@ -13,6 +15,8 @@ import (
 )
 
 func TestSendAmount(t *testing.T) {
+	// TODO this test requires kvd to be running locally, with a funded deputy account.
+
 	kavaConfig := sdk.GetConfig()
 	app.SetBech32AddressPrefixes(kavaConfig)
 	kavaConfig.Seal()
