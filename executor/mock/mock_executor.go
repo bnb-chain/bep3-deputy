@@ -5,14 +5,13 @@
 package mock
 
 import (
-	big "math/big"
-	reflect "reflect"
-	time "time"
-
 	common "github.com/binance-chain/bep3-deputy/common"
 	store "github.com/binance-chain/bep3-deputy/store"
 	common0 "github.com/ethereum/go-ethereum/common"
 	gomock "github.com/golang/mock/gomock"
+	big "math/big"
+	reflect "reflect"
+	time "time"
 )
 
 // MockExecutor is a mock of Executor interface
@@ -301,4 +300,19 @@ func (m *MockExecutor) Refund(swapId common0.Hash) (string, *common.Error) {
 func (mr *MockExecutorMockRecorder) Refund(swapId interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Refund", reflect.TypeOf((*MockExecutor)(nil).Refund), swapId)
+}
+
+// SendAmount mocks base method
+func (m *MockExecutor) SendAmount(address string, amount big.Int, symbol string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendAmount", address, amount, symbol)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SendAmount indicates an expected call of SendAmount
+func (mr *MockExecutorMockRecorder) SendAmount(address, amount, symbol interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendAmount", reflect.TypeOf((*MockExecutor)(nil).SendAmount), address, amount, symbol)
 }
