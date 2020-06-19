@@ -303,6 +303,8 @@ type KavaConfig struct {
 	TokenBalanceAlertThreshold int64          `json:"token_balance_alert_threshold"`
 	KavaBalanceAlertThreshold  int64          `json:"kava_balance_alert_threshold"`
 	DeputyAddr                 sdk.AccAddress `json:"deputy_addr"`
+	ColdWalletAddr             sdk.AccAddress `json:"cold_wallet_addr"`
+	HotWalletOverflow          int64          `json:"hot_wallet_overflow"`
 }
 
 func (cfg *KavaConfig) Validate() {
@@ -330,6 +332,7 @@ func (cfg *KavaConfig) Validate() {
 	if cfg.FetchInterval <= 0 {
 		panic(fmt.Sprintf("fetch_interval of kava chain should be larger than 0"))
 	}
+	// TODO validate new params
 }
 
 type LogConfig struct {

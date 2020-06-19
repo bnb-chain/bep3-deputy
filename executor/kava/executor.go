@@ -13,6 +13,7 @@ import (
 
 	ec "github.com/ethereum/go-ethereum/common"
 	sdk "github.com/kava-labs/cosmos-sdk/types"
+	"github.com/kava-labs/cosmos-sdk/x/bank"
 	"github.com/kava-labs/go-sdk/client"
 	"github.com/kava-labs/go-sdk/kava"
 	"github.com/kava-labs/go-sdk/kava/bep3"
@@ -541,6 +542,42 @@ func (executor *Executor) GetBalanceAlertMsg() (string, error) {
 	}
 
 	return alertMsg, nil
+}
+
+func (executor *Executor) SendAmount(address string, amount big.Int, symbol string) (string, error) {
+	executor.mutex.Lock()
+	defer executor.mutex.Unlock()
+
+	keyManager, err := getKeyManager(executor.Config)
+	if err != nil {
+		return "", common.NewError(err, false)
+	}
+	executor.Client.Keybase = keyManager
+	// wipe the keys after function returns
+	defer func() {
+		executor.Client.Keybase = nil
+	}()
+
+	if executor.Client.Keybase == nil {
+		return "", common.NewError(errors.New("kava key missing"), false)
+	}
+
+	decodedAddr, err := sdk.AccAddressFromBech32(address)
+	if err != nil {
+		return "", err
+	}
+	coins := sdk.NewCoins(sdk.NewCoin(symbol, sdk.NewIntFromBigInt(&amount))) // TODO pointers?
+	sendMsg := bank.NewMsgSend(executor.Config.DeputyAddr, decodedAddr, coins)
+
+	res, err := executor.Client.Broadcast(sendMsg, client.Sync)
+	if err != nil {
+		return "", common.NewError(err, isInvalidSequenceError(err.Error()))
+	}
+	if res.Code != 0 {
+		return "", common.NewError(errors.New(res.Log), isInvalidSequenceError(res.Log))
+	}
+
+	return res.Hash.String(), nil
 }
 
 func isInvalidSequenceError(err string) bool {

@@ -55,6 +55,7 @@ func (deputy *Deputy) Start() {
 	go deputy.OtherExpireUserHTLT()
 
 	// common
+	go deputy.RunHotWalletOverflow()
 	go deputy.CheckTxSentRoutine()
 	go deputy.Alert()
 	go deputy.ReconRoutine()
@@ -685,5 +686,36 @@ func (deputy *Deputy) Recon() {
 		reconMsg += fmt.Sprintf("total amount: %s\n", latestTotalAmount.String())
 		reconMsg += fmt.Sprintf("diff from last amount: %s", diffAmount.String())
 		deputy.sendTgMsg(reconMsg)
+	}
+}
+
+func (deputy *Deputy) RunHotWalletOverflow() { // TODO split into bnb and other
+	for {
+		// check bep hot wallet for overflow
+		deputyBalance, err := deputy.OtherExecutor.GetBalance()
+		if err != nil {
+			util.Logger.Errorf("skipping overflow tx, could not get OTHER chain deputy balance: %w", err)
+			continue
+		}
+		var overflow big.Int
+		overflow.Sub(deputyBalance, big.NewInt(deputy.Config.KavaConfig.HotWalletOverflow)) // TODO add buffer to avoid sending small amounts?
+		if overflow.Cmp(big.NewInt(0)) <= 0 {
+			continue
+		}
+
+		// send tx
+		_, err = deputy.OtherExecutor.SendAmount(deputy.Config.KavaConfig.ColdWalletAddr.String(), overflow, deputy.Config.KavaConfig.Symbol)
+		if err != nil {
+			util.Logger.Errorf("OTHER overflow tx failed: %w", err)
+			continue
+		}
+
+		/*
+			Extension:
+			simpler - before sending, check there is not already a send tx pending
+			(could even see if balance - pending amounts is above threshold and send another tx)
+			requires creating a TxSent, then something to watching to update the status of it.
+		*/
+		time.Sleep(common.DeputyRunOverflowInterval)
 	}
 }

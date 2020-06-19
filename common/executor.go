@@ -70,4 +70,6 @@ type Executor interface {
 	Claim(swapId common.Hash, randomNumber common.Hash) (string, *Error)
 	// Refund sends refund tx
 	Refund(swapId common.Hash) (string, *Error)
+	// SendAmount
+	SendAmount(address string, amount big.Int, symbol string) (string, error) // TODO should be *Error?
 }
