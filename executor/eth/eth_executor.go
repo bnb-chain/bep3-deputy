@@ -390,6 +390,6 @@ func (executor *EthExecutor) GetBalanceAlertMsg() (string, error) {
 	return alertMsg, nil
 }
 
-func (executor *EthExecutor) SendAmount(address string, amount big.Int, symbol string) (string, error) {
+func (executor *EthExecutor) SendAmount(address string, amount *big.Int, symbol string) (string, error) {
 	return "", fmt.Errorf("not implemented") // TODO
 }

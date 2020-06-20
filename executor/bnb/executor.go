@@ -476,6 +476,6 @@ func (executor *Executor) GetBalanceAlertMsg() (string, error) {
 	return alertMsg, nil
 }
 
-func (executor *Executor) SendAmount(address string, amount big.Int, symbol string) (string, error) {
+func (executor *Executor) SendAmount(address string, amount *big.Int, symbol string) (string, error) {
 	return "", fmt.Errorf("not implemented") // TODO
 }

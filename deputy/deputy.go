@@ -691,6 +691,8 @@ func (deputy *Deputy) Recon() {
 
 func (deputy *Deputy) RunHotWalletOverflow() { // TODO split into bnb and other
 	for {
+		time.Sleep(common.DeputyRunOverflowInterval)
+
 		// check bep hot wallet for overflow
 		deputyBalance, err := deputy.OtherExecutor.GetBalance()
 		if err != nil {
@@ -704,7 +706,8 @@ func (deputy *Deputy) RunHotWalletOverflow() { // TODO split into bnb and other
 		}
 
 		// send tx
-		_, err = deputy.OtherExecutor.SendAmount(deputy.Config.KavaConfig.ColdWalletAddr.String(), overflow, deputy.Config.KavaConfig.Symbol)
+		util.Logger.Infof("attempting to move %s%s to the cold wallet", &overflow, deputy.Config.KavaConfig.Symbol)
+		_, err = deputy.OtherExecutor.SendAmount(deputy.Config.KavaConfig.ColdWalletAddr.String(), &overflow, deputy.Config.KavaConfig.Symbol)
 		if err != nil {
 			util.Logger.Errorf("OTHER overflow tx failed: %w", err)
 			continue
@@ -716,6 +719,5 @@ func (deputy *Deputy) RunHotWalletOverflow() { // TODO split into bnb and other
 			(could even see if balance - pending amounts is above threshold and send another tx)
 			requires creating a TxSent, then something to watching to update the status of it.
 		*/
-		time.Sleep(common.DeputyRunOverflowInterval)
 	}
 }

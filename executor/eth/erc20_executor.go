@@ -448,6 +448,6 @@ func (executor *Erc20Executor) GetBalanceAlertMsg() (string, error) {
 	return alertMsg, nil
 }
 
-func (executor *Erc20Executor) SendAmount(address string, amount big.Int, symbol string) (string, error) {
+func (executor *Erc20Executor) SendAmount(address string, amount *big.Int, symbol string) (string, error) {
 	return "", fmt.Errorf("not implemented") // TODO
 }

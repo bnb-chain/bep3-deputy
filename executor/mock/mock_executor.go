@@ -303,7 +303,7 @@ func (mr *MockExecutorMockRecorder) Refund(swapId interface{}) *gomock.Call {
 }
 
 // SendAmount mocks base method
-func (m *MockExecutor) SendAmount(address string, amount big.Int, symbol string) (string, error) {
+func (m *MockExecutor) SendAmount(address string, amount *big.Int, symbol string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendAmount", address, amount, symbol)
 	ret0, _ := ret[0].(string)

@@ -540,7 +540,7 @@ func (executor *Executor) GetBalanceAlertMsg() (string, error) {
 	return alertMsg, nil
 }
 
-func (executor *Executor) SendAmount(address string, amount big.Int, symbol string) (string, error) {
+func (executor *Executor) SendAmount(address string, amount *big.Int, symbol string) (string, error) {
 	executor.mutex.Lock()
 	defer executor.mutex.Unlock()
 
@@ -562,7 +562,7 @@ func (executor *Executor) SendAmount(address string, amount big.Int, symbol stri
 	if err != nil {
 		return "", err
 	}
-	coins := sdk.NewCoins(sdk.NewCoin(symbol, sdk.NewIntFromBigInt(&amount))) // TODO pointers?
+	coins := sdk.NewCoins(sdk.NewCoin(symbol, sdk.NewIntFromBigInt(amount)))
 	sendMsg := bank.NewMsgSend(executor.Config.DeputyAddr, decodedAddr, coins)
 
 	res, err := executor.Client.Broadcast(sendMsg, client.Sync)

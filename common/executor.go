@@ -71,5 +71,5 @@ type Executor interface {
 	// Refund sends refund tx
 	Refund(swapId common.Hash) (string, *Error)
 	// SendAmount
-	SendAmount(address string, amount big.Int, symbol string) (string, error) // TODO should be *Error?
+	SendAmount(address string, amount *big.Int, symbol string) (string, error) // TODO should be *Error?
 }
