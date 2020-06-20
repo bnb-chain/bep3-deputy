@@ -379,8 +379,12 @@ func (executor *Executor) Refundable(swapId ec.Hash) (bool, error) {
 	}
 }
 
-func (executor *Executor) GetBalance() (*big.Int, error) {
-	account, err := executor.RpcClient.GetAccount(executor.DeputyAddress)
+func (executor *Executor) GetBalance(addressString string) (*big.Int, error) {
+	address, err := types.AccAddressFromBech32(addressString)
+	if err != nil {
+		return big.NewInt(0), err
+	}
+	account, err := executor.RpcClient.GetAccount(address)
 	if err != nil {
 		return big.NewInt(0), err
 	}
@@ -423,6 +427,10 @@ func (executor *Executor) Balance() ([]types.TokenBalance, error) {
 
 func (executor *Executor) GetDeputyAddress() string {
 	return executor.Config.DeputyAddr.String()
+}
+
+func (executor *Executor) GetColdWalletAddress() string {
+	return executor.Config.ColdWalletAddr.String()
 }
 
 func (executor *Executor) CalcSwapId(randomNumberHash ec.Hash, sender string, senderOtherChain string) ([]byte, error) {
@@ -476,6 +484,39 @@ func (executor *Executor) GetBalanceAlertMsg() (string, error) {
 	return alertMsg, nil
 }
 
-func (executor *Executor) SendAmount(address string, amount *big.Int, symbol string) (string, error) {
-	return "", fmt.Errorf("not implemented") // TODO
+func (executor *Executor) SendAmount(address string, amount *big.Int) (string, error) {
+	executor.mutex.Lock()
+	defer executor.mutex.Unlock()
+
+	keyManager, err := getKeyManager(executor.Config)
+	if err != nil {
+		return "", common.NewError(err, false)
+	}
+	executor.RpcClient.SetKeyManager(keyManager)
+	defer executor.RpcClient.SetKeyManager(nil)
+
+	recipient, err := types.AccAddressFromBech32(address)
+	if err != nil {
+		return "", common.NewError(err, false)
+	}
+
+	if !amount.IsInt64() {
+		return "", common.NewError(
+			errors.New(fmt.Sprintf("out amount(%s) is not int64", amount.String())),
+			false,
+		)
+	}
+	outCoins := []types.Coin{{
+		Denom:  executor.Config.Symbol,
+		Amount: amount.Int64(),
+	}}
+
+	res, err := executor.RpcClient.SendToken([]sdkMsg.Transfer{{ToAddr: recipient, Coins: outCoins}}, rpc.Sync)
+	if err != nil {
+		return "", common.NewError(err, isInvalidSequenceError(err.Error()))
+	}
+	if res.Code != 0 {
+		return "", common.NewError(errors.New(res.Log), isInvalidSequenceError(res.Log))
+	}
+	return res.Hash.String(), nil
 }

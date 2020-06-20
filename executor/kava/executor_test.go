@@ -32,14 +32,13 @@ func TestSendAmount(t *testing.T) {
 		Symbol:                     "bnb",
 		DeputyAddr:                 deputyAddr,
 		ColdWalletAddr:             coldAddr,
-		HotWalletOverflow:          1000,
 		FetchInterval:              2,
 		TokenBalanceAlertThreshold: 10000,
 		KavaBalanceAlertThreshold:  10000,
 	}
 	exe := NewExecutor(client.LocalNetwork, &config)
 
-	_, err = exe.SendAmount(config.ColdWalletAddr.String(), *big.NewInt(100_000_000), "bnb")
+	_, err = exe.SendAmount(config.ColdWalletAddr.String(), big.NewInt(100_000_000))
 	require.NoError(t, err)
 	// TODO check coins have moved
 }

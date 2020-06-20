@@ -43,10 +43,12 @@ type Executor interface {
 	GetFetchInterval() time.Duration
 	// GetDeputyAddress returns deputy account address
 	GetDeputyAddress() string
+	// GetColdWalletAddres returns the address of the deputy's cold wallet
+	GetColdWalletAddress() string
 	// GetSentTxStatus returns status of tx sent
 	GetSentTxStatus(hash string) store.TxStatus
-	// GetBalance returns balance of swap token
-	GetBalance() (*big.Int, error)
+	// GetBalance returns balance of swap token for any address
+	GetBalance(address string) (*big.Int, error)
 	// GetStatus returns status of deputy account, like balance of deputy account
 	GetStatus() (interface{}, error)
 	// GetBalanceAlertMsg returns balance alert message if necessary, like account balance is less than amount in config
@@ -71,5 +73,5 @@ type Executor interface {
 	// Refund sends refund tx
 	Refund(swapId common.Hash) (string, *Error)
 	// SendAmount
-	SendAmount(address string, amount *big.Int, symbol string) (string, error) // TODO should be *Error?
+	SendAmount(address string, amount *big.Int) (string, error) // TODO should be *Error?
 }

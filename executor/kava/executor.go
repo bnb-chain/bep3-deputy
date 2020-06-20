@@ -452,16 +452,21 @@ func (executor *Executor) Refundable(swapId ec.Hash) (bool, error) {
 	return false, nil
 }
 
-// GetBalance gets the deputy's current kava balance
-func (executor *Executor) GetBalance() (*big.Int, error) {
-	deputy, err := executor.Client.GetAccount(executor.DeputyAddress)
+// GetBalance gets the deputy's current kava-bnb balance
+func (executor *Executor) GetBalance(addressString string) (*big.Int, error) {
+	address, err := sdk.AccAddressFromBech32(addressString)
+	if err != nil {
+		return big.NewInt(0), fmt.Errorf("cannot decode address %s: %w", addressString, err)
+	}
+	deputy, err := executor.Client.GetAccount(address)
 	if err != nil {
 		return big.NewInt(0), err
 	}
 
-	if deputy.Address.Empty() {
-		return big.NewInt(0), errors.New("invalid deputy address")
-	}
+	// TODO safe to remove? an account should always have an address
+	// if deputy.Address.Empty() {
+	// 	return big.NewInt(0), errors.New("invalid deputy address")
+	// }
 
 	for _, coin := range deputy.Coins {
 		if coin.Denom == executor.Config.Symbol {
@@ -475,6 +480,11 @@ func (executor *Executor) GetBalance() (*big.Int, error) {
 // GetDeputyAddress gets the deputy's address from the config
 func (executor *Executor) GetDeputyAddress() string {
 	return executor.Config.DeputyAddr.String()
+}
+
+// GetColdWalletAddress gets the deputy's address from the config
+func (executor *Executor) GetColdWalletAddress() string {
+	return executor.Config.ColdWalletAddr.String()
 }
 
 // CalcSwapId calculates the swap ID for a given random number hash, sender, and sender other chain
@@ -540,7 +550,7 @@ func (executor *Executor) GetBalanceAlertMsg() (string, error) {
 	return alertMsg, nil
 }
 
-func (executor *Executor) SendAmount(address string, amount *big.Int, symbol string) (string, error) {
+func (executor *Executor) SendAmount(address string, amount *big.Int) (string, error) {
 	executor.mutex.Lock()
 	defer executor.mutex.Unlock()
 
@@ -562,7 +572,7 @@ func (executor *Executor) SendAmount(address string, amount *big.Int, symbol str
 	if err != nil {
 		return "", err
 	}
-	coins := sdk.NewCoins(sdk.NewCoin(symbol, sdk.NewIntFromBigInt(amount)))
+	coins := sdk.NewCoins(sdk.NewCoin(executor.Config.Symbol, sdk.NewIntFromBigInt(amount)))
 	sendMsg := bank.NewMsgSend(executor.Config.DeputyAddr, decodedAddr, coins)
 
 	res, err := executor.Client.Broadcast(sendMsg, client.Sync)

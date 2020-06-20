@@ -55,10 +55,13 @@ func (deputy *Deputy) Start() {
 	go deputy.OtherExpireUserHTLT()
 
 	// common
-	go deputy.RunHotWalletOverflow()
 	go deputy.CheckTxSentRoutine()
 	go deputy.Alert()
 	go deputy.ReconRoutine()
+
+	// watch for funds accumulating in the hot wallet and move to cold wallet
+	go deputy.RunBEP2HotWalletOverflow()
+	go deputy.RunOtherHotWalletOverflow()
 
 	// metrics
 	if deputy.Config.InstrumentationConfig.Prometheus && deputy.Config.InstrumentationConfig.PrometheusListenAddr != "" {
@@ -118,14 +121,14 @@ func (deputy *Deputy) Metrics() {
 			util.PrometheusMetrics.NumSwaps.With(prometheus.Labels{"type": string(store.SwapTypeOtherToBEP2), "status": "rejected"}).Set(float64(rejectedOtherToBEP2))
 		}
 
-		bnbBalance, err := deputy.BnbExecutor.GetBalance()
+		bnbBalance, err := deputy.BnbExecutor.GetBalance(deputy.BnbExecutor.GetDeputyAddress())
 		if err == nil && util.PrometheusMetrics != nil {
 			bnbBalanceBigFloat := util.QuoBigInt(bnbBalance, util.GetBigIntForDecimal(common.BEP2Decimal))
 			bnbBalanceFloat, _ := bnbBalanceBigFloat.Float64()
 			util.PrometheusMetrics.Balance.With(prometheus.Labels{"chain": string(deputy.BnbExecutor.GetChain())}).Set(bnbBalanceFloat)
 		}
 
-		otherBalance, err := deputy.OtherExecutor.GetBalance()
+		otherBalance, err := deputy.OtherExecutor.GetBalance(deputy.OtherExecutor.GetDeputyAddress())
 		if err == nil && util.PrometheusMetrics != nil {
 			otherBalanceBigFloat := util.QuoBigInt(otherBalance, util.GetBigIntForDecimal(deputy.Config.ChainConfig.OtherChainDecimal))
 			otherBalanceFloat, _ := otherBalanceBigFloat.Float64()
@@ -689,28 +692,25 @@ func (deputy *Deputy) Recon() {
 	}
 }
 
-func (deputy *Deputy) RunHotWalletOverflow() { // TODO split into bnb and other
+func (deputy *Deputy) RunBEP2HotWalletOverflow() {
+	executor := deputy.BnbExecutor
 	for {
 		time.Sleep(common.DeputyRunOverflowInterval)
 
-		// check bep hot wallet for overflow
-		deputyBalance, err := deputy.OtherExecutor.GetBalance()
+		deputyBalance, err := executor.GetBalance(executor.GetDeputyAddress())
 		if err != nil {
-			util.Logger.Errorf("skipping overflow tx, could not get OTHER chain deputy balance: %w", err)
+			util.Logger.Errorf("could not get BNB deputy balance: %w", err)
 			continue
 		}
 		var overflow big.Int
-		overflow.Sub(deputyBalance, big.NewInt(deputy.Config.KavaConfig.HotWalletOverflow)) // TODO add buffer to avoid sending small amounts?
+		overflow.Sub(deputyBalance, deputy.Config.ChainConfig.BnbHotWalletOverflow) // TODO add buffer to avoid sending small amounts?
 		if overflow.Cmp(big.NewInt(0)) <= 0 {
 			continue
 		}
 
-		// send tx
-		util.Logger.Infof("attempting to move %s%s to the cold wallet", &overflow, deputy.Config.KavaConfig.Symbol)
-		_, err = deputy.OtherExecutor.SendAmount(deputy.Config.KavaConfig.ColdWalletAddr.String(), &overflow, deputy.Config.KavaConfig.Symbol)
+		_, err = executor.SendAmount(executor.GetColdWalletAddress(), &overflow)
 		if err != nil {
-			util.Logger.Errorf("OTHER overflow tx failed: %w", err)
-			continue
+			util.Logger.Errorf("BNB overflow tx failed: %w", err)
 		}
 
 		/*
@@ -719,5 +719,27 @@ func (deputy *Deputy) RunHotWalletOverflow() { // TODO split into bnb and other
 			(could even see if balance - pending amounts is above threshold and send another tx)
 			requires creating a TxSent, then something to watching to update the status of it.
 		*/
+	}
+}
+func (deputy *Deputy) RunOtherHotWalletOverflow() {
+	executor := deputy.OtherExecutor
+	for {
+		time.Sleep(common.DeputyRunOverflowInterval)
+
+		deputyBalance, err := executor.GetBalance(executor.GetDeputyAddress())
+		if err != nil {
+			util.Logger.Errorf("could not get OTHER deputy balance: %w", err)
+			continue
+		}
+		var overflow big.Int
+		overflow.Sub(deputyBalance, deputy.Config.ChainConfig.OtherChainHotWalletOverflow) // TODO add buffer to avoid sending small amounts?
+		if overflow.Cmp(big.NewInt(0)) <= 0 {
+			continue
+		}
+
+		_, err = executor.SendAmount(executor.GetColdWalletAddress(), &overflow)
+		if err != nil {
+			util.Logger.Errorf("OTHER overflow tx failed: %w", err)
+		}
 	}
 }

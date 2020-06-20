@@ -109,6 +109,20 @@ func (mr *MockExecutorMockRecorder) GetDeputyAddress() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeputyAddress", reflect.TypeOf((*MockExecutor)(nil).GetDeputyAddress))
 }
 
+// GetColdWalletAddress mocks base method
+func (m *MockExecutor) GetColdWalletAddress() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetColdWalletAddress")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetColdWalletAddress indicates an expected call of GetColdWalletAddress
+func (mr *MockExecutorMockRecorder) GetColdWalletAddress() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetColdWalletAddress", reflect.TypeOf((*MockExecutor)(nil).GetColdWalletAddress))
+}
+
 // GetSentTxStatus mocks base method
 func (m *MockExecutor) GetSentTxStatus(hash string) store.TxStatus {
 	m.ctrl.T.Helper()
@@ -124,18 +138,18 @@ func (mr *MockExecutorMockRecorder) GetSentTxStatus(hash interface{}) *gomock.Ca
 }
 
 // GetBalance mocks base method
-func (m *MockExecutor) GetBalance() (*big.Int, error) {
+func (m *MockExecutor) GetBalance(address string) (*big.Int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBalance")
+	ret := m.ctrl.Call(m, "GetBalance", address)
 	ret0, _ := ret[0].(*big.Int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetBalance indicates an expected call of GetBalance
-func (mr *MockExecutorMockRecorder) GetBalance() *gomock.Call {
+func (mr *MockExecutorMockRecorder) GetBalance(address interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBalance", reflect.TypeOf((*MockExecutor)(nil).GetBalance))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBalance", reflect.TypeOf((*MockExecutor)(nil).GetBalance), address)
 }
 
 // GetStatus mocks base method
@@ -303,16 +317,16 @@ func (mr *MockExecutorMockRecorder) Refund(swapId interface{}) *gomock.Call {
 }
 
 // SendAmount mocks base method
-func (m *MockExecutor) SendAmount(address string, amount *big.Int, symbol string) (string, error) {
+func (m *MockExecutor) SendAmount(address string, amount *big.Int) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SendAmount", address, amount, symbol)
+	ret := m.ctrl.Call(m, "SendAmount", address, amount)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SendAmount indicates an expected call of SendAmount
-func (mr *MockExecutorMockRecorder) SendAmount(address, amount, symbol interface{}) *gomock.Call {
+func (mr *MockExecutorMockRecorder) SendAmount(address, amount interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendAmount", reflect.TypeOf((*MockExecutor)(nil).SendAmount), address, amount, symbol)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendAmount", reflect.TypeOf((*MockExecutor)(nil).SendAmount), address, amount)
 }

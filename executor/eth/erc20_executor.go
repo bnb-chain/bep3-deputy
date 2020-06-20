@@ -340,26 +340,31 @@ func (executor *Erc20Executor) Allowance() (*big.Int, error) {
 	return allowance, err
 }
 
-func (executor *Erc20Executor) GetBalance() (*big.Int, error) {
-	return executor.Erc20Balance()
+func (executor *Erc20Executor) GetBalance(addressString string) (*big.Int, error) {
+	address := common.HexToAddress(addressString)
+	return executor.Erc20Balance(address)
 }
 
-func (executor *Erc20Executor) Erc20Balance() (*big.Int, error) {
+func (executor *Erc20Executor) Erc20Balance(address common.Address) (*big.Int, error) {
 	instance, err := da.NewERC20(executor.TokenContractAddr, executor.Client)
 	if err != nil {
 		return nil, err
 	}
 
-	balance, err := instance.BalanceOf(nil, executor.Config.EthConfig.DeputyAddr)
+	balance, err := instance.BalanceOf(nil, address)
 	return balance, err
 }
 
-func (executor *Erc20Executor) EthBalance() (*big.Int, error) {
-	return executor.Client.BalanceAt(context.Background(), executor.address, nil)
+func (executor *Erc20Executor) EthBalance(address common.Address) (*big.Int, error) {
+	return executor.Client.BalanceAt(context.Background(), address, nil)
 }
 
 func (executor *Erc20Executor) GetDeputyAddress() string {
 	return executor.Config.EthConfig.DeputyAddr.String()
+}
+
+func (executor *Erc20Executor) GetColdWalletAddress() string {
+	return executor.Config.EthConfig.ColdWalletAddr.String()
 }
 
 func (executor *Erc20Executor) CalcSwapId(randomNumberHash common.Hash, sender string, senderOtherChain string) ([]byte, error) {
@@ -389,13 +394,13 @@ func (executor *Erc20Executor) GetStatus() (interface{}, error) {
 	}
 	ethStatus.Allowance = util.QuoBigInt(allowance, util.GetBigIntForDecimal(executor.Config.ChainConfig.OtherChainDecimal)).String()
 
-	balance, err := executor.Erc20Balance()
+	balance, err := executor.Erc20Balance(executor.address)
 	if err != nil {
 		return nil, err
 	}
 	ethStatus.Erc20Balance = util.QuoBigInt(balance, util.GetBigIntForDecimal(executor.Config.ChainConfig.OtherChainDecimal)).String()
 
-	ethBalance, err := executor.EthBalance()
+	ethBalance, err := executor.EthBalance(executor.address)
 	if err != nil {
 		return nil, err
 	}
@@ -413,7 +418,7 @@ func (executor *Erc20Executor) GetBalanceAlertMsg() (string, error) {
 
 	alertMsg := ""
 	if executor.Config.EthConfig.EthBalanceAlertThreshold.Cmp(big.NewInt(0)) > 0 {
-		ethBalance, err := executor.EthBalance()
+		ethBalance, err := executor.EthBalance(executor.address)
 		if err != nil {
 			return "", err
 		}
@@ -436,7 +441,7 @@ func (executor *Erc20Executor) GetBalanceAlertMsg() (string, error) {
 	}
 
 	if executor.Config.EthConfig.TokenBalanceAlertThreshold.Cmp(big.NewInt(0)) > 0 {
-		tokenBalance, err := executor.Erc20Balance()
+		tokenBalance, err := executor.Erc20Balance(executor.address)
 		if err != nil {
 			return "", err
 		}
@@ -448,6 +453,6 @@ func (executor *Erc20Executor) GetBalanceAlertMsg() (string, error) {
 	return alertMsg, nil
 }
 
-func (executor *Erc20Executor) SendAmount(address string, amount *big.Int, symbol string) (string, error) {
+func (executor *Erc20Executor) SendAmount(address string, amount *big.Int) (string, error) {
 	return "", fmt.Errorf("not implemented") // TODO
 }

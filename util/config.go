@@ -58,6 +58,7 @@ type ChainConfig struct {
 	BnbRatio                     *big.Float `json:"bnb_ratio"`
 	BnbFixedFee                  *big.Int   `json:"bnb_fixed_fee"`
 	BnbStartHeight               int64      `json:"bnb_start_height"`
+	BnbHotWalletOverflow         *big.Int   `json:"bnb_hot_wallet_overflow"` // deputy's balance above this threshold will be send to the cold wallet
 
 	OtherChain                          string     `json:"other_chain"`
 	OtherChainConfirmNum                int64      `json:"other_chain_confirm_num"`
@@ -73,6 +74,7 @@ type ChainConfig struct {
 	OtherChainRatio                     *big.Float `json:"other_chain_ratio"`
 	OtherChainFixedFee                  *big.Int   `json:"other_chain_fixed_fee"`
 	OtherChainStartHeight               int64      `json:"other_chain_start_height"`
+	OtherChainHotWalletOverflow         *big.Int   `json:"other_chain_hot_wallet_overflow"` // deputy's balance above this threshold will be send to the cold wallet
 }
 
 func (cfg *ChainConfig) Validate() {
@@ -111,6 +113,9 @@ func (cfg *ChainConfig) Validate() {
 	}
 	if cfg.BnbFixedFee.Cmp(big.NewInt(0)) < 0 {
 		panic("bnb_fixed_fee should be no less than 0")
+	}
+	if cfg.BnbHotWalletOverflow.Cmp(big.NewInt(0)) < 0 {
+		panic("bnb_hot_wallet_overflow should be no less than 0")
 	}
 
 	if cfg.OtherChain != dc.ChainEth && cfg.OtherChain != dc.ChainKava {
@@ -154,6 +159,9 @@ func (cfg *ChainConfig) Validate() {
 	}
 	if cfg.OtherChainFixedFee.Cmp(big.NewInt(0)) < 0 {
 		panic("other_chain_fixed_fee should be no less than 0")
+	}
+	if cfg.OtherChainHotWalletOverflow.Cmp(big.NewInt(0)) < 0 {
+		panic("other_chain_hot_wallet_overflow should be no less than 0")
 	}
 }
 
@@ -200,6 +208,7 @@ type BnbConfig struct {
 	TokenBalanceAlertThreshold int64            `json:"token_balance_alert_threshold"`
 	BnbBalanceAlertThreshold   int64            `json:"bnb_balance_alert_threshold"`
 	DeputyAddr                 types.AccAddress `json:"deputy_addr"`
+	ColdWalletAddr             types.AccAddress `json:"cold_wallet_addr"`
 }
 
 func (cfg *BnbConfig) Validate() {
@@ -224,6 +233,9 @@ func (cfg *BnbConfig) Validate() {
 	if len(cfg.DeputyAddr) != types.AddrLen {
 		panic(fmt.Sprintf("length of deputy address should be %d", types.AddrLen))
 	}
+	if len(cfg.ColdWalletAddr) != types.AddrLen {
+		panic(fmt.Sprintf("length of cold wallet address should be %d", types.AddrLen))
+	}
 	if cfg.FetchInterval <= 0 {
 		panic(fmt.Sprintf("fetch_interval of binance chain should be larger than 0"))
 	}
@@ -239,6 +251,7 @@ type EthConfig struct {
 	SwapContractAddr               common.Address `json:"swap_contract_addr"`
 	TokenContractAddr              common.Address `json:"token_contract_addr"`
 	DeputyAddr                     common.Address `json:"deputy_addr"`
+	ColdWalletAddr                 common.Address `json:"cold_wallet_addr"`
 	TokenBalanceAlertThreshold     *big.Int       `json:"token_balance_alert_threshold"`
 	EthBalanceAlertThreshold       *big.Int       `json:"eth_balance_alert_threshold"`
 	AllowanceBalanceAlertThreshold *big.Int       `json:"allowance_balance_alert_threshold"`
@@ -281,6 +294,9 @@ func (cfg *EthConfig) Validate() {
 	if cfg.DeputyAddr.String() == emptyAddr.String() {
 		panic(fmt.Sprintf("deputy_addr of ethereum should not be empty"))
 	}
+	if cfg.ColdWalletAddr.String() == emptyAddr.String() {
+		panic(fmt.Sprintf("cold_wallet_addr of ethereum should not be empty"))
+	}
 	if cfg.GasLimit <= 0 {
 		panic(fmt.Sprintf("gas_limit of ethereum should be larger than 0"))
 	}
@@ -304,7 +320,6 @@ type KavaConfig struct {
 	KavaBalanceAlertThreshold  int64          `json:"kava_balance_alert_threshold"`
 	DeputyAddr                 sdk.AccAddress `json:"deputy_addr"`
 	ColdWalletAddr             sdk.AccAddress `json:"cold_wallet_addr"`
-	HotWalletOverflow          int64          `json:"hot_wallet_overflow"`
 }
 
 func (cfg *KavaConfig) Validate() {
@@ -329,10 +344,12 @@ func (cfg *KavaConfig) Validate() {
 	if len(cfg.DeputyAddr) != types.AddrLen {
 		panic(fmt.Sprintf("length of deputy address should be %d", types.AddrLen))
 	}
+	if len(cfg.ColdWalletAddr) != types.AddrLen {
+		panic(fmt.Sprintf("length of cold wallet address should be %d", types.AddrLen))
+	}
 	if cfg.FetchInterval <= 0 {
 		panic(fmt.Sprintf("fetch_interval of kava chain should be larger than 0"))
 	}
-	// TODO validate new params
 }
 
 type LogConfig struct {
