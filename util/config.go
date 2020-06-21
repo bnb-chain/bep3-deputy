@@ -114,6 +114,9 @@ func (cfg *ChainConfig) Validate() {
 	if cfg.BnbFixedFee.Cmp(big.NewInt(0)) < 0 {
 		panic("bnb_fixed_fee should be no less than 0")
 	}
+	if cfg.BnbHotWalletOverflow == nil {
+		panic("bnb_hot_wallet_overflow should be not be nil")
+	}
 	if cfg.BnbHotWalletOverflow.Cmp(big.NewInt(0)) < 0 {
 		panic("bnb_hot_wallet_overflow should be no less than 0")
 	}
@@ -159,6 +162,9 @@ func (cfg *ChainConfig) Validate() {
 	}
 	if cfg.OtherChainFixedFee.Cmp(big.NewInt(0)) < 0 {
 		panic("other_chain_fixed_fee should be no less than 0")
+	}
+	if cfg.OtherChainHotWalletOverflow == nil {
+		panic("other_chain_hot_wallet_overflow should not be nil")
 	}
 	if cfg.OtherChainHotWalletOverflow.Cmp(big.NewInt(0)) < 0 {
 		panic("other_chain_hot_wallet_overflow should be no less than 0")
