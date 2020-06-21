@@ -703,7 +703,7 @@ func (deputy *Deputy) RunBEP2HotWalletOverflow() {
 			continue
 		}
 		var overflow big.Int
-		overflow.Sub(deputyBalance, deputy.Config.ChainConfig.BnbHotWalletOverflow) // TODO add buffer to avoid sending small amounts?
+		overflow.Sub(deputyBalance, deputy.Config.ChainConfig.BnbHotWalletOverflow)
 		if overflow.Cmp(big.NewInt(0)) <= 0 {
 			continue
 		}
@@ -712,13 +712,6 @@ func (deputy *Deputy) RunBEP2HotWalletOverflow() {
 		if err != nil {
 			util.Logger.Errorf("BNB overflow tx failed: %w", err)
 		}
-
-		/*
-			Extension:
-			simpler - before sending, check there is not already a send tx pending
-			(could even see if balance - pending amounts is above threshold and send another tx)
-			requires creating a TxSent, then something to watching to update the status of it.
-		*/
 	}
 }
 func (deputy *Deputy) RunOtherHotWalletOverflow() {
@@ -732,7 +725,7 @@ func (deputy *Deputy) RunOtherHotWalletOverflow() {
 			continue
 		}
 		var overflow big.Int
-		overflow.Sub(deputyBalance, deputy.Config.ChainConfig.OtherChainHotWalletOverflow) // TODO add buffer to avoid sending small amounts?
+		overflow.Sub(deputyBalance, deputy.Config.ChainConfig.OtherChainHotWalletOverflow)
 		if overflow.Cmp(big.NewInt(0)) <= 0 {
 			continue
 		}

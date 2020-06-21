@@ -463,11 +463,6 @@ func (executor *Executor) GetBalance(addressString string) (*big.Int, error) {
 		return big.NewInt(0), err
 	}
 
-	// TODO safe to remove? an account should always have an address
-	// if deputy.Address.Empty() {
-	// 	return big.NewInt(0), errors.New("invalid deputy address")
-	// }
-
 	for _, coin := range deputy.Coins {
 		if coin.Denom == executor.Config.Symbol {
 			return big.NewInt(coin.Amount.Int64()), nil
