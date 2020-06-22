@@ -721,7 +721,7 @@ func (deputy *Deputy) RunOtherHotWalletOverflow() {
 
 		deputyBalance, err := executor.GetBalance(executor.GetDeputyAddress())
 		if err != nil {
-			util.Logger.Errorf("could not get OTHER deputy balance: %w", err)
+			util.Logger.Errorf("could not get other chain deputy balance: %w", err)
 			continue
 		}
 		var overflow big.Int
@@ -732,7 +732,7 @@ func (deputy *Deputy) RunOtherHotWalletOverflow() {
 
 		_, err = executor.SendAmount(executor.GetColdWalletAddress(), &overflow)
 		if err != nil {
-			util.Logger.Errorf("OTHER overflow tx failed: %w", err)
+			util.Logger.Errorf("other chain overflow tx failed: %w", err)
 		}
 	}
 }

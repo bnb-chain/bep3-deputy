@@ -58,7 +58,7 @@ type ChainConfig struct {
 	BnbRatio                     *big.Float `json:"bnb_ratio"`
 	BnbFixedFee                  *big.Int   `json:"bnb_fixed_fee"`
 	BnbStartHeight               int64      `json:"bnb_start_height"`
-	BnbHotWalletOverflow         *big.Int   `json:"bnb_hot_wallet_overflow"` // deputy's balance above this threshold will be send to the cold wallet
+	BnbHotWalletOverflow         *big.Int   `json:"bnb_hot_wallet_overflow"` // deputy's balance above this threshold will be sent to the cold wallet
 
 	OtherChain                          string     `json:"other_chain"`
 	OtherChainConfirmNum                int64      `json:"other_chain_confirm_num"`
@@ -74,7 +74,7 @@ type ChainConfig struct {
 	OtherChainRatio                     *big.Float `json:"other_chain_ratio"`
 	OtherChainFixedFee                  *big.Int   `json:"other_chain_fixed_fee"`
 	OtherChainStartHeight               int64      `json:"other_chain_start_height"`
-	OtherChainHotWalletOverflow         *big.Int   `json:"other_chain_hot_wallet_overflow"` // deputy's balance above this threshold will be send to the cold wallet
+	OtherChainHotWalletOverflow         *big.Int   `json:"other_chain_hot_wallet_overflow"` // deputy's balance above this threshold will be sent to the cold wallet
 }
 
 func (cfg *ChainConfig) Validate() {

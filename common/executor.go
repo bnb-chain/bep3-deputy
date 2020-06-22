@@ -43,7 +43,7 @@ type Executor interface {
 	GetFetchInterval() time.Duration
 	// GetDeputyAddress returns deputy account address
 	GetDeputyAddress() string
-	// GetColdWalletAddres returns the address of the deputy's cold wallet
+	// GetColdWalletAddress returns the address of the deputy's cold wallet
 	GetColdWalletAddress() string
 	// GetSentTxStatus returns status of tx sent
 	GetSentTxStatus(hash string) store.TxStatus
@@ -73,5 +73,5 @@ type Executor interface {
 	// Refund sends refund tx
 	Refund(swapId common.Hash) (string, *Error)
 	// SendAmount
-	SendAmount(address string, amount *big.Int) (string, error) // TODO should be *Error?
+	SendAmount(address string, amount *big.Int) (string, error)
 }
