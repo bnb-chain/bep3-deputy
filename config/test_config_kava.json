@@ -24,7 +24,8 @@
     "bnb_max_deputy_out_amount": 1000000000000,
     "bnb_ratio": "1",
     "bnb_fixed_fee": 1000,
-    "bnb_start_height": 81355680,
+    "bnb_start_height": 88935162,
+    "bnb_hot_wallet_overflow": 10000000000,
     "other_chain": "KAVA",
     "other_chain_confirm_num": 2,
     "other_chain_decimal": 8,
@@ -38,10 +39,11 @@
     "other_chain_max_deputy_out_amount": 1000000000000,
     "other_chain_ratio": "1",
     "other_chain_fixed_fee": 1000,
-    "other_chain_start_height": 1
+    "other_chain_start_height": 19,
+    "other_chain_hot_wallet_overflow": 10000000000
   },
   "log_config": {
-    "level": "DEBUG",
+    "level": "INFO",
     "filename": "",
     "max_file_size_in_mb": 0,
     "max_backups_of_log_files": 0,
@@ -65,6 +67,7 @@
     "rpc_addr": "data-seed-pre-2-s1.binance.org:80",
     "symbol": "BNB",
     "deputy_addr": "tbnb10uypsspvl6jlxcx5xse02pag39l8xpe7a3468h",
+    "cold_wallet_addr": "tbnb1y6kw4ztun2vp026ytp597nuqse7e3xxha2hyks",
     "fetch_interval": 2,
     "token_balance_alert_threshold": 10000,
     "bnb_balance_alert_threshold": 10000
@@ -77,6 +80,7 @@
     "rpc_addr": "tcp://localhost:26657",
     "symbol": "bnb",
     "deputy_addr": "kava1sl8glhaa9f9tep0d9h8gdcfmwcatghtdrfcd2x",
+    "cold_wallet_addr": "kava1kt283f9gtkyq3ndkd67yj3jlvlg94lgp7gcz33",
     "fetch_interval": 2,
     "token_balance_alert_threshold": 10000,
     "kava_balance_alert_threshold": 10000

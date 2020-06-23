@@ -59,6 +59,10 @@ func (deputy *Deputy) Start() {
 	go deputy.Alert()
 	go deputy.ReconRoutine()
 
+	// watch for funds accumulating in the hot wallet and move to cold wallet
+	go deputy.RunBEP2HotWalletOverflow()
+	go deputy.RunOtherHotWalletOverflow()
+
 	// metrics
 	if deputy.Config.InstrumentationConfig.Prometheus && deputy.Config.InstrumentationConfig.PrometheusListenAddr != "" {
 		go deputy.Metrics()
@@ -117,14 +121,14 @@ func (deputy *Deputy) Metrics() {
 			util.PrometheusMetrics.NumSwaps.With(prometheus.Labels{"type": string(store.SwapTypeOtherToBEP2), "status": "rejected"}).Set(float64(rejectedOtherToBEP2))
 		}
 
-		bnbBalance, err := deputy.BnbExecutor.GetBalance()
+		bnbBalance, err := deputy.BnbExecutor.GetBalance(deputy.BnbExecutor.GetDeputyAddress())
 		if err == nil && util.PrometheusMetrics != nil {
 			bnbBalanceBigFloat := util.QuoBigInt(bnbBalance, util.GetBigIntForDecimal(common.BEP2Decimal))
 			bnbBalanceFloat, _ := bnbBalanceBigFloat.Float64()
 			util.PrometheusMetrics.Balance.With(prometheus.Labels{"chain": string(deputy.BnbExecutor.GetChain())}).Set(bnbBalanceFloat)
 		}
 
-		otherBalance, err := deputy.OtherExecutor.GetBalance()
+		otherBalance, err := deputy.OtherExecutor.GetBalance(deputy.OtherExecutor.GetDeputyAddress())
 		if err == nil && util.PrometheusMetrics != nil {
 			otherBalanceBigFloat := util.QuoBigInt(otherBalance, util.GetBigIntForDecimal(deputy.Config.ChainConfig.OtherChainDecimal))
 			otherBalanceFloat, _ := otherBalanceBigFloat.Float64()
@@ -685,5 +689,50 @@ func (deputy *Deputy) Recon() {
 		reconMsg += fmt.Sprintf("total amount: %s\n", latestTotalAmount.String())
 		reconMsg += fmt.Sprintf("diff from last amount: %s", diffAmount.String())
 		deputy.sendTgMsg(reconMsg)
+	}
+}
+
+func (deputy *Deputy) RunBEP2HotWalletOverflow() {
+	executor := deputy.BnbExecutor
+	for {
+		time.Sleep(common.DeputyRunOverflowInterval)
+
+		deputyBalance, err := executor.GetBalance(executor.GetDeputyAddress())
+		if err != nil {
+			util.Logger.Errorf("could not get BNB deputy balance: %w", err)
+			continue
+		}
+		var overflow big.Int
+		overflow.Sub(deputyBalance, deputy.Config.ChainConfig.BnbHotWalletOverflow)
+		if overflow.Cmp(big.NewInt(0)) <= 0 {
+			continue
+		}
+
+		_, err = executor.SendAmount(executor.GetColdWalletAddress(), &overflow)
+		if err != nil {
+			util.Logger.Errorf("BNB overflow tx failed: %w", err)
+		}
+	}
+}
+func (deputy *Deputy) RunOtherHotWalletOverflow() {
+	executor := deputy.OtherExecutor
+	for {
+		time.Sleep(common.DeputyRunOverflowInterval)
+
+		deputyBalance, err := executor.GetBalance(executor.GetDeputyAddress())
+		if err != nil {
+			util.Logger.Errorf("could not get other chain deputy balance: %w", err)
+			continue
+		}
+		var overflow big.Int
+		overflow.Sub(deputyBalance, deputy.Config.ChainConfig.OtherChainHotWalletOverflow)
+		if overflow.Cmp(big.NewInt(0)) <= 0 {
+			continue
+		}
+
+		_, err = executor.SendAmount(executor.GetColdWalletAddress(), &overflow)
+		if err != nil {
+			util.Logger.Errorf("other chain overflow tx failed: %w", err)
+		}
 	}
 }

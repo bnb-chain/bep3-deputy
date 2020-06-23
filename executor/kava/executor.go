@@ -12,6 +12,7 @@ import (
 
 	ec "github.com/ethereum/go-ethereum/common"
 	sdk "github.com/kava-labs/cosmos-sdk/types"
+	"github.com/kava-labs/cosmos-sdk/x/bank"
 	"github.com/kava-labs/go-sdk/client"
 	"github.com/kava-labs/go-sdk/kava"
 	"github.com/kava-labs/go-sdk/kava/bep3"
@@ -451,15 +452,15 @@ func (executor *Executor) Refundable(swapId ec.Hash) (bool, error) {
 	return false, nil
 }
 
-// GetBalance gets the deputy's current kava balance
-func (executor *Executor) GetBalance() (*big.Int, error) {
-	deputy, err := executor.Client.GetAccount(executor.DeputyAddress)
+// GetBalance gets the deputy's current kava-bnb balance
+func (executor *Executor) GetBalance(addressString string) (*big.Int, error) {
+	address, err := sdk.AccAddressFromBech32(addressString)
+	if err != nil {
+		return big.NewInt(0), fmt.Errorf("cannot decode address %s: %w", addressString, err)
+	}
+	deputy, err := executor.Client.GetAccount(address)
 	if err != nil {
 		return big.NewInt(0), err
-	}
-
-	if deputy.Address.Empty() {
-		return big.NewInt(0), errors.New("invalid deputy address")
 	}
 
 	for _, coin := range deputy.Coins {
@@ -474,6 +475,11 @@ func (executor *Executor) GetBalance() (*big.Int, error) {
 // GetDeputyAddress gets the deputy's address from the config
 func (executor *Executor) GetDeputyAddress() string {
 	return executor.Config.DeputyAddr.String()
+}
+
+// GetColdWalletAddress gets the deputy's address from the config
+func (executor *Executor) GetColdWalletAddress() string {
+	return executor.Config.ColdWalletAddr.String()
 }
 
 // CalcSwapId calculates the swap ID for a given random number hash, sender, and sender other chain
@@ -537,6 +543,42 @@ func (executor *Executor) GetBalanceAlertMsg() (string, error) {
 	}
 
 	return alertMsg, nil
+}
+
+func (executor *Executor) SendAmount(address string, amount *big.Int) (string, error) {
+	executor.mutex.Lock()
+	defer executor.mutex.Unlock()
+
+	keyManager, err := getKeyManager(executor.Config)
+	if err != nil {
+		return "", common.NewError(err, false)
+	}
+	executor.Client.Keybase = keyManager
+	// wipe the keys after function returns
+	defer func() {
+		executor.Client.Keybase = nil
+	}()
+
+	if executor.Client.Keybase == nil {
+		return "", common.NewError(errors.New("kava key missing"), false)
+	}
+
+	decodedAddr, err := sdk.AccAddressFromBech32(address)
+	if err != nil {
+		return "", err
+	}
+	coins := sdk.NewCoins(sdk.NewCoin(executor.Config.Symbol, sdk.NewIntFromBigInt(amount)))
+	sendMsg := bank.NewMsgSend(executor.Config.DeputyAddr, decodedAddr, coins)
+
+	res, err := executor.Client.Broadcast(sendMsg, client.Sync)
+	if err != nil {
+		return "", common.NewError(err, isInvalidSequenceError(err.Error()))
+	}
+	if res.Code != 0 {
+		return "", common.NewError(errors.New(res.Log), isInvalidSequenceError(res.Log))
+	}
+
+	return res.Hash.String(), nil
 }
 
 func isInvalidSequenceError(err string) bool {

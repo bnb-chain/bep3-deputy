@@ -126,13 +126,13 @@ func (deputy *Deputy) ResendTx(id int64) (string, error) {
 func (deputy *Deputy) GetReconciliationStatus() (*common.ReconciliationStatus, error) {
 	reconStatus := &common.ReconciliationStatus{}
 
-	bnbChainTokenBalance, err := deputy.BnbExecutor.GetBalance()
+	bnbChainTokenBalance, err := deputy.BnbExecutor.GetBalance(deputy.BnbExecutor.GetDeputyAddress())
 	if err != nil {
 		return nil, err
 	}
 	reconStatus.Bep2TokenBalance = util.QuoBigInt(bnbChainTokenBalance, util.GetBigIntForDecimal(common.BEP2Decimal))
 
-	otherChainTokenBalance, err := deputy.OtherExecutor.GetBalance()
+	otherChainTokenBalance, err := deputy.OtherExecutor.GetBalance(deputy.OtherExecutor.GetDeputyAddress())
 	if err != nil {
 		return nil, err
 	}
