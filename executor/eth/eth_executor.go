@@ -327,16 +327,21 @@ func (executor *EthExecutor) GetTransactor() (*bind.TransactOpts, error) {
 	return auth, nil
 }
 
-func (executor *EthExecutor) GetBalance() (*big.Int, error) {
-	return executor.EthBalance()
+func (executor *EthExecutor) GetBalance(addressString string) (*big.Int, error) {
+	address := common.HexToAddress(addressString)
+	return executor.EthBalance(address)
 }
 
-func (executor *EthExecutor) EthBalance() (*big.Int, error) {
-	return executor.Client.BalanceAt(context.Background(), executor.address, nil)
+func (executor *EthExecutor) EthBalance(address common.Address) (*big.Int, error) {
+	return executor.Client.BalanceAt(context.Background(), address, nil)
 }
 
 func (executor *EthExecutor) GetDeputyAddress() string {
 	return executor.Config.EthConfig.DeputyAddr.String()
+}
+
+func (executor *EthExecutor) GetColdWalletAddress() string {
+	return executor.Config.EthConfig.ColdWalletAddr.String()
 }
 
 func (executor *EthExecutor) CalcSwapId(randomNumberHash common.Hash, sender string, senderOtherChain string) ([]byte, error) {
@@ -360,7 +365,7 @@ func (executor *EthExecutor) IsSameAddress(addrA string, addrB string) bool {
 func (executor *EthExecutor) GetStatus() (interface{}, error) {
 	ethStatus := &dc.EthStatus{}
 
-	ethBalance, err := executor.EthBalance()
+	ethBalance, err := executor.EthBalance(executor.address)
 	if err != nil {
 		return nil, err
 	}
@@ -377,7 +382,7 @@ func (executor *EthExecutor) GetBalanceAlertMsg() (string, error) {
 
 	alertMsg := ""
 	if executor.Config.EthConfig.EthBalanceAlertThreshold.Cmp(big.NewInt(0)) > 0 {
-		ethBalance, err := executor.EthBalance()
+		ethBalance, err := executor.EthBalance(executor.address)
 		if err != nil {
 			return "", err
 		}
@@ -388,4 +393,8 @@ func (executor *EthExecutor) GetBalanceAlertMsg() (string, error) {
 		}
 	}
 	return alertMsg, nil
+}
+
+func (executor *EthExecutor) SendAmount(address string, amount *big.Int) (string, error) {
+	return "", fmt.Errorf("not implemented") // TODO
 }
