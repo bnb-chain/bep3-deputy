@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+    bnbnode:
+        build: "./bnbchain"
+        ports:
+            # default binance rpc port
+            - "27147:27147"
+            # non default that actually works
+            # - "26657:26657"
+        volumes:
+            - "./bnbchain/start-new-chain.sh:/opt/bnbchaind/start-new-chain.sh"
+        command: ["bash", "/opt/bnbchaind/start-new-chain.sh"]
+    # bnbchainrest:
+    #     build: "./bnbchain"
+    #     ports:
+    #         - "1317:1317"
+    #     command: ["bnbcli", "api-server", "--node=tcp://bnbchain:26657", "--laddr=tcp://0.0.0.0:1317", "--trust-node"]
+    deputy:
+        build:
+            context: ".."
+            dockerfile: "./deputy/DockerFile"
+        volumes:
+            - "./deputy/config.json:/deputy/config/config.json"
+    kavanode:
+        image: "kava/kava-deputy-test:v0.8.1" # TODO change name?
+        ports:
+            # default kava rpc port
+            - "26657:26657"
+        volumes:
+            - "./kava/start-new-chain.sh:/root/kava/start-new-chain.sh"
+        command: ["bash", "/root/kava/start-new-chain.sh"]

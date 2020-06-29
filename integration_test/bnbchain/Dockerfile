@@ -1,8 +1,9 @@
+# Start by using binance's node-binary dockerfile. This was built and uploaded to kava dockerhub.
 FROM kava/bnbchain:0.6.3
 
-# Install sponge and jq for convenience
+# Install some utilities for setup and debugging
 RUN apt-get update
-RUN apt-get install -y moreutils jq
+RUN apt-get install -y curl moreutils jq
 
 # The node binaries are in /node-binary, ie /node-binary/fullnode/prod/0.6.3/linux/bnbchaind
 # Add the latest version to the PATH for ease of use:
