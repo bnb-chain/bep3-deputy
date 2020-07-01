@@ -4,10 +4,8 @@ services:
     bnbnode:
         build: "./bnbchain"
         ports:
-            # default binance rpc port
-            - "27147:27147"
-            # non default that actually works
-            # - "26657:26657"
+            # rpc port
+            - "26658:26657"
         volumes:
             - "./bnbchain/start-new-chain.sh:/opt/bnbchaind/start-new-chain.sh"
         command: ["bash", "/opt/bnbchaind/start-new-chain.sh"]
@@ -18,8 +16,8 @@ services:
     #     command: ["bnbcli", "api-server", "--node=tcp://bnbchain:26657", "--laddr=tcp://0.0.0.0:1317", "--trust-node"]
     deputy:
         build:
-            context: ".."
-            dockerfile: "./deputy/DockerFile"
+            context: ".." # relative to docker-compose.yaml
+            dockerfile: "integration_test/deputy/Dockerfile" # relative to context directory
         volumes:
             - "./deputy/config.json:/deputy/config/config.json"
     kavanode:
@@ -28,5 +26,5 @@ services:
             # default kava rpc port
             - "26657:26657"
         volumes:
-            - "./kava/start-new-chain.sh:/root/kava/start-new-chain.sh"
-        command: ["bash", "/root/kava/start-new-chain.sh"]
+            - "./kava/:/root/kava/config"
+        command: ["bash", "/root/kava/config/start-new-chain.sh"]

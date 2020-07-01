@@ -1,21 +1,21 @@
 #! /usr/bin/bash
 
-echo "starting starting starting starting starting starting starting starting starting starting starting"
-
 # Setup keys
-# deputy bnb1egvrzk6ujsh9t7cf79r0nwdzu8aze7j8893k5m
-printf "password\nresemble volume attend machine expose behave amazing alone ten coconut sponsor endless employ grocery write physical diagram crisp bubble accuse six cry brown envelope\n" | bnbcli keys add deputy --recover
-# user bnb13acaej0d676zya5q9ghz7hdpc4743aw5ekx2kf
-printf "password\nfancy lazy report bird holiday original save early fun lunar secret enact also tennis sentence morning rebel program ocean income used ranch census next\n" | bnbcli keys add user --recover
+# deputy bnb1uky3me9ggqypmrsvxk7ur6hqkzq7zmv4ed4ng7
+printf "password\nclinic soap symptom alter mango orient punch table seek among broken bundle best dune hurt predict liquid subject silver once kick metal okay moment\n" | bnbcli keys add deputy --recover
+# cold wallet bnb13acaej0d676zya5q9ghz7hdpc4743aw5ekx2kf
+printf "password\nfancy lazy report bird holiday original save early fun lunar secret enact also tennis sentence morning rebel program ocean income used ranch census next\n" | bnbcli keys add cold-wallet --recover
+# test user bnb18s9h2nsjlecwpntgyjd9g7h4wx5zez899azk04
+printf "password\nthen nuclear favorite advance plate glare shallow enhance replace embody list dose quick scale service sentence hover announce advance nephew phrase order useful this\n" | bnbcli keys add test-user --recover
 
 # Init a new chain
-# TODO change chain-id
 bnbchaind init --moniker validatorName --chain-id Binance-Chain-Tigris --overwrite
 
 # Add the two accounts to the genesis file (when the chain starts these will be populated with coins)
 jq ".app_state.accounts[1].name=\"deputy\"" ~/.bnbchaind/config/genesis.json | sponge ~/.bnbchaind/config/genesis.json
 jq ".app_state.accounts[1].address=\"$(bnbcli keys show deputy --address)\"" ~/.bnbchaind/config/genesis.json | sponge ~/.bnbchaind/config/genesis.json
-jq ".app_state.accounts[2].name=\"user\"" ~/.bnbchaind/config/genesis.json | sponge ~/.bnbchaind/config/genesis.json
-jq ".app_state.accounts[2].address=\"$(bnbcli keys show user --address)\"" ~/.bnbchaind/config/genesis.json | sponge ~/.bnbchaind/config/genesis.json
+
+jq ".app_state.accounts[2].name=\"test_user\"" ~/.bnbchaind/config/genesis.json | sponge ~/.bnbchaind/config/genesis.json
+jq ".app_state.accounts[2].address=\"$(bnbcli keys show test-user --address)\"" ~/.bnbchaind/config/genesis.json | sponge ~/.bnbchaind/config/genesis.json
 
 bnbchaind start
