@@ -30,6 +30,8 @@ const (
 	bnbTestUserMnemonic  = "then nuclear favorite advance plate glare shallow enhance replace embody list dose quick scale service sentence hover announce advance nephew phrase order useful this"
 	kavaDeputyMnemonic   = "equip town gesture square tomorrow volume nephew minute witness beef rich gadget actress egg sing secret pole winter alarm law today check violin uncover"
 	kavaTestUserMnemonic = "very health column only surface project output absent outdoor siren reject era legend legal twelve setup roast lion rare tunnel devote style random food"
+
+	bnbHTLTFee = 37500
 )
 
 var bnbDeputyAddr, bnbTestUserAddr, kavaDeputyAddr, kavaTestUserAddr string
@@ -103,6 +105,9 @@ func TestMain(m *testing.M) {
 // }
 
 func TestBnbToKavaSwap(t *testing.T) {
+
+	// 1) setup executors to send txs
+
 	config := util.ParseConfigFromFile("deputy/config.json")
 	bnbConfig := config.BnbConfig
 	bnbConfig.RpcAddr = "tcp://localhost:26658"
@@ -110,70 +115,115 @@ func TestBnbToKavaSwap(t *testing.T) {
 
 	bnbExecutor := bnbExe.NewExecutor(types.ProdNetwork, bnbConfig)
 
+	kavaConfig := config.KavaConfig
+	kavaConfig.RpcAddr = "tcp://localhost:26657"
+	kavaConfig.Mnemonic = kavaDeputyMnemonic
+
+	kavaExecutor := kavaExe.NewExecutor(client.LocalNetwork, kavaConfig)
+
+	// 1) Cache account balances to compare against
+
+	bnbTestUserBalance, err := bnbExecutor.GetBalance(bnbTestUserAddr)
+	require.NoError(t, err)
+	kavaTestUserBalance, err := kavaExecutor.GetBalance(kavaTestUserAddr)
+	require.NoError(t, err)
+
+	swapAmount := big.NewInt(100_000_000)
+
+	// 1) Send bnb swap
+
 	rndNum, err := bep3.GenerateSecureRandomNumber()
 	require.NoError(t, err)
 	timestamp := time.Now().Unix()
-	rndHashSlice := bep3.CalculateRandomHash(rndNum, timestamp)
-	var rndHash ec.Hash
-	copy(rndHash[:], rndHashSlice)
-	txHash, cmnErr := bnbExecutor.HTLT(
+	rndHash := ec.BytesToHash(bep3.CalculateRandomHash(rndNum, timestamp))
+	htltTxHash, cmnErr := bnbExecutor.HTLT(
 		rndHash,
 		timestamp,
 		20000,
 		bnbDeputyAddr,
 		kavaDeputyAddr,
 		kavaTestUserAddr,
-		big.NewInt(100_000_000),
+		swapAmount,
 	)
-	// Note this cannot use require.NoError as that wraps the commonError in an error interface.
+	// Note: this cannot use require.NoError as that wraps the commonError in an error interface.
 	// This makes err != nil (despite the underlying value being a nil pointer) and err.Error() also panics.
 	require.Nil(t, cmnErr)
 
 	err = wait(8*time.Second, func() (bool, error) {
-		return bnbExecutor.GetSentTxStatus(txHash) == store.TxSentStatusSuccess, nil
+		return bnbExecutor.GetSentTxStatus(htltTxHash) == store.TxSentStatusSuccess, nil
 	})
 	require.NoError(t, err)
 	t.Log("bnb htlt created")
 
-	// kava stuff
-	kavaConfig := config.KavaConfig
-	kavaConfig.RpcAddr = "tcp://localhost:26657"
-	kavaConfig.Mnemonic = kavaDeputyMnemonic // TODO make this the test user and swap out deputy address to make sigs valid?
+	// 2) Wait until deputy relays swap to kava
 
-	kavaExecutor := kavaExe.NewExecutor(client.LocalNetwork, kavaConfig)
-
-	idBytes, err := kavaExecutor.CalcSwapId(rndHash, kavaDeputyAddr, bnbTestUserAddr)
-	var id ec.Hash
-	copy(id[:], idBytes)
+	kavaSwapIDBz, err := kavaExecutor.CalcSwapId(rndHash, kavaDeputyAddr, bnbTestUserAddr)
+	require.NoError(t, err)
+	kavaSwapID := ec.BytesToHash(kavaSwapIDBz)
 
 	err = wait(15*time.Second, func() (bool, error) {
 		t.Log("waiting...")
-		return kavaExecutor.HasSwap(id)
+		return kavaExecutor.HasSwap(kavaSwapID)
 	})
 	require.NoError(t, err)
 	t.Log("swap created on kava by deputy")
 
-	txHash, cmnErr = kavaExecutor.Claim(id, byteSliceToArray(rndNum))
-	if cmnErr != nil { // TODO
-		t.Log(cmnErr.Error())
-		t.FailNow()
-	}
+	// 3) Send claim on kava
+
+	claimTxHash, cmnErr := kavaExecutor.Claim(kavaSwapID, ec.BytesToHash(rndNum))
+	require.Nil(t, cmnErr)
+
 	err = wait(8*time.Second, func() (bool, error) {
-		return kavaExecutor.GetSentTxStatus(txHash) == store.TxSentStatusSuccess, nil
+		return kavaExecutor.GetSentTxStatus(claimTxHash) == store.TxSentStatusSuccess, nil
 	})
 	require.NoError(t, err)
 	t.Log("kava htlt claimed")
 
-	bz, err := bnbExecutor.CalcSwapId(rndHash, bnbTestUserAddr, kavaDeputyAddr)
+	// 4) Wait until deputy relays claim to bnb
+
+	bnbSwapIDBz, err := bnbExecutor.CalcSwapId(rndHash, bnbTestUserAddr, kavaDeputyAddr)
 	require.NoError(t, err)
+	bnbSwapID := ec.BytesToHash(bnbSwapIDBz)
 
 	wait(10*time.Second, func() (bool, error) {
-		claimable, err := bnbExecutor.Claimable(ec.BytesToHash(bz))
-		return !claimable, err
+		// check the deputy has relayed the claim by checking the status of the swap
+		// once claimed it is no longer claimable, if it timesout it will become refundable
+		claimable, err := bnbExecutor.Claimable(bnbSwapID)
+		if err != nil {
+			return false, err
+		}
+		refundable, err := bnbExecutor.Refundable(bnbSwapID)
+		if err != nil {
+			return false, err
+		}
+		return !(claimable || refundable), nil
 	})
-	t.Log("bnb htlt claimed by deputy") // TODO it could also time out sort of
+	t.Log("bnb htlt claimed by deputy")
 
-	// TODO check balances n stuff
+	// 5) Check balances
+
+	bnbTestUserBalanceFinal, err := bnbExecutor.GetBalance(bnbTestUserAddr)
+	require.NoError(t, err)
+	kavaTestUserBalanceFinal, err := kavaExecutor.GetBalance(kavaTestUserAddr)
+	require.NoError(t, err)
+
+	expectedBnbBalance := big.NewInt(0)
+	expectedBnbBalance.Sub(bnbTestUserBalance, swapAmount).Sub(expectedBnbBalance, big.NewInt(bnbHTLTFee))
+	require.Zerof(
+		t,
+		expectedBnbBalance.Cmp(bnbTestUserBalanceFinal),
+		"expected: %, actual: %s",
+		expectedBnbBalance,
+		bnbTestUserBalanceFinal,
+	)
+
+	var swapAmountKava = &big.Int{}
+	swapAmountKava.Sub(swapAmount, config.ChainConfig.BnbFixedFee)
+	require.Zero(t, config.ChainConfig.BnbRatio.Cmp(big.NewFloat(1)), "test does not support ratio conversions other than 1")
+	require.Zero(
+		t,
+		new(big.Int).Add(kavaTestUserBalance, swapAmountKava).Cmp(kavaTestUserBalanceFinal),
+	)
 }
 
 func wait(timeout time.Duration, shouldStop func() (bool, error)) error {
@@ -189,11 +239,4 @@ func wait(timeout time.Duration, shouldStop func() (bool, error)) error {
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-}
-
-// TODO ec.BytesToHash
-func byteSliceToArray(bz []byte) [32]byte {
-	var array [32]byte
-	copy(array[:], bz)
-	return array
 }
