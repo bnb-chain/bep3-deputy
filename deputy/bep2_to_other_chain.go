@@ -49,8 +49,8 @@ func (deputy *Deputy) sendOtherHTLT(swap *store.Swap) (string, error) {
 
 		// Reject swap request
 		deputy.UpdateSwapStatus(swap, store.SwapStatusRejected, "")
-		return "", fmt.Errorf("reject swap for wrong params, bnb_swap_id=%s, amount=%s",
-			swap.BnbChainSwapId, outAmount.String())
+		return "", fmt.Errorf("reject swap for wrong params, bnb_swap_id=%s, amount=%s remaining_height_span=%d",
+			swap.BnbChainSwapId, outAmount.String(), swap.ExpireHeight-swap.Height)
 	} else {
 		bigIntDecimal := util.GetBigIntForDecimal(deputy.Config.ChainConfig.OtherChainDecimal)
 

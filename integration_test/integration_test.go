@@ -65,45 +65,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// func TestKavaToBnbSwap(t *testing.T) {
-// 	/*
-// 		create kava swap msg
-// 		send tx
-// 		wait until accepted
-// 		wait until relayed
-// 		create claim msg
-// 		send tx
-// 		wait until accepted
-// 		wait until relayed
-// 		check balances
-// 	*/
-
-// 	cdc := kava.MakeCodec()
-// 	kavaClient := client.NewKavaClient(cdc, kavaTestUserMnemonic, kava.Bip44CoinType, "tcp://localhost:26657", client.LocalNetwork)
-
-// 	deputyAccAddr, err := sdk.AccAddressFromBech32(kavaDeputyAddr)
-// 	require.NoError(t, err)
-
-// 	rndNum, err := bep3.GenerateSecureRandomNumber()
-// 	require.NoError(t, err)
-// 	timestamp := time.Now().Unix()
-// 	hash := bep3.CalculateRandomHash(rndNum, timestamp)
-
-// 	msg := bep3.NewMsgCreateAtomicSwap(
-// 		kavaClient.Keybase.GetAddr(),
-// 		deputyAccAddr,
-// 		bnbTestUserAddr,
-// 		bnbDeputyAddr,
-// 		hash,
-// 		timestamp,
-// 		sdk.NewCoins(sdk.NewInt64Coin("bnb", 100_000_000)),
-// 		250,
-// 	)
-// 	res, err := kavaClient.Broadcast(msg, client.Commit) // TODO use client.Sync and polling?
-// 	require.NoError(t, err)
-// 	require.Equal(t, uint32(0), res.Code, res.Log)
-// }
-
 func TestBnbToKavaSwap(t *testing.T) {
 
 	// 1) setup executors to send txs
@@ -121,7 +82,7 @@ func TestBnbToKavaSwap(t *testing.T) {
 
 	kavaExecutor := kavaExe.NewExecutor(client.LocalNetwork, kavaConfig)
 
-	// 1) Cache account balances to compare against
+	// 2) Cache account balances to compare against
 
 	bnbTestUserBalance, err := bnbExecutor.GetBalance(bnbTestUserAddr)
 	require.NoError(t, err)
@@ -130,7 +91,7 @@ func TestBnbToKavaSwap(t *testing.T) {
 
 	swapAmount := big.NewInt(100_000_000)
 
-	// 1) Send bnb swap
+	// 3) Send bnb swap
 
 	rndNum, err := bep3.GenerateSecureRandomNumber()
 	require.NoError(t, err)
@@ -155,7 +116,7 @@ func TestBnbToKavaSwap(t *testing.T) {
 	require.NoError(t, err)
 	t.Log("bnb htlt created")
 
-	// 2) Wait until deputy relays swap to kava
+	// 4) Wait until deputy relays swap to kava
 
 	kavaSwapIDBz, err := kavaExecutor.CalcSwapId(rndHash, kavaDeputyAddr, bnbTestUserAddr)
 	require.NoError(t, err)
@@ -168,7 +129,7 @@ func TestBnbToKavaSwap(t *testing.T) {
 	require.NoError(t, err)
 	t.Log("swap created on kava by deputy")
 
-	// 3) Send claim on kava
+	// 5) Send claim on kava
 
 	claimTxHash, cmnErr := kavaExecutor.Claim(kavaSwapID, ec.BytesToHash(rndNum))
 	require.Nil(t, cmnErr)
@@ -179,7 +140,7 @@ func TestBnbToKavaSwap(t *testing.T) {
 	require.NoError(t, err)
 	t.Log("kava htlt claimed")
 
-	// 4) Wait until deputy relays claim to bnb
+	// 6) Wait until deputy relays claim to bnb
 
 	bnbSwapIDBz, err := bnbExecutor.CalcSwapId(rndHash, bnbTestUserAddr, kavaDeputyAddr)
 	require.NoError(t, err)
@@ -200,7 +161,7 @@ func TestBnbToKavaSwap(t *testing.T) {
 	})
 	t.Log("bnb htlt claimed by deputy")
 
-	// 5) Check balances
+	// 7) Check balances
 
 	bnbTestUserBalanceFinal, err := bnbExecutor.GetBalance(bnbTestUserAddr)
 	require.NoError(t, err)
@@ -223,6 +184,127 @@ func TestBnbToKavaSwap(t *testing.T) {
 	require.Zero(
 		t,
 		new(big.Int).Add(kavaTestUserBalance, swapAmountKava).Cmp(kavaTestUserBalanceFinal),
+	)
+}
+
+func TestKavaToBnbSwap(t *testing.T) {
+
+	// 1) setup executors to send txs
+
+	config := util.ParseConfigFromFile("deputy/config.json")
+
+	kavaConfig := config.KavaConfig
+	kavaConfig.RpcAddr = "tcp://localhost:26657"
+	kavaConfig.Mnemonic = kavaTestUserMnemonic
+	kavaExecutor := kavaExe.NewExecutor(client.LocalNetwork, kavaConfig)
+
+	bnbConfig := config.BnbConfig
+	bnbConfig.RpcAddr = "tcp://localhost:26658"
+	bnbConfig.Mnemonic = bnbDeputyMnemonic
+	bnbExecutor := bnbExe.NewExecutor(types.ProdNetwork, bnbConfig)
+
+	// 2) Cache account balances to compare against
+
+	bnbTestUserBalance, err := bnbExecutor.GetBalance(bnbTestUserAddr)
+	require.NoError(t, err)
+	kavaTestUserBalance, err := kavaExecutor.GetBalance(kavaTestUserAddr)
+	require.NoError(t, err)
+
+	swapAmount := big.NewInt(99_000_000)
+
+	// 3) Send kava swap
+
+	rndNum, err := bep3.GenerateSecureRandomNumber()
+	require.NoError(t, err)
+	timestamp := time.Now().Unix()
+	rndHash := ec.BytesToHash(bep3.CalculateRandomHash(rndNum, timestamp))
+	htltTxHash, cmnErr := kavaExecutor.HTLT(
+		rndHash,
+		timestamp,
+		230,
+		kavaDeputyAddr,
+		bnbDeputyAddr,
+		bnbTestUserAddr,
+		swapAmount,
+	)
+	// Note: this cannot use require.NoError as that wraps the commonError in an error interface.
+	// This makes err != nil (despite the underlying value being a nil pointer) and err.Error() also panics.
+	require.Nil(t, cmnErr)
+
+	err = wait(8*time.Second, func() (bool, error) {
+		return kavaExecutor.GetSentTxStatus(htltTxHash) == store.TxSentStatusSuccess, nil
+	})
+	require.NoError(t, err)
+	t.Log("kava htlt created")
+
+	// 4) Wait until deputy relays swap to bnb
+
+	bnbSwapIDBz, err := bnbExecutor.CalcSwapId(rndHash, bnbDeputyAddr, kavaTestUserAddr)
+	require.NoError(t, err)
+	bnbSwapID := ec.BytesToHash(bnbSwapIDBz)
+
+	err = wait(15*time.Second, func() (bool, error) {
+		t.Log("waiting...")
+		return bnbExecutor.HasSwap(bnbSwapID)
+	})
+	require.NoError(t, err)
+	t.Log("swap created on bnb by deputy")
+
+	// 5) Send claim on bnb
+
+	claimTxHash, cmnErr := bnbExecutor.Claim(bnbSwapID, ec.BytesToHash(rndNum))
+	require.Nil(t, cmnErr)
+
+	err = wait(8*time.Second, func() (bool, error) {
+		return bnbExecutor.GetSentTxStatus(claimTxHash) == store.TxSentStatusSuccess, nil
+	})
+	require.NoError(t, err)
+	t.Log("bnb htlt claimed")
+
+	// 6) Wait until deputy relays claim to kava
+
+	kavaSwapIDBz, err := kavaExecutor.CalcSwapId(rndHash, kavaTestUserAddr, bnbDeputyAddr)
+	require.NoError(t, err)
+	kavaSwapID := ec.BytesToHash(kavaSwapIDBz)
+
+	wait(10*time.Second, func() (bool, error) {
+		// check the deputy has relayed the claim by checking the status of the swap
+		// once claimed it is no longer claimable, if it timesout it will become refundable
+		claimable, err := kavaExecutor.Claimable(kavaSwapID)
+		if err != nil {
+			return false, err
+		}
+		refundable, err := kavaExecutor.Refundable(kavaSwapID)
+		if err != nil {
+			return false, err
+		}
+		return !(claimable || refundable), nil
+	})
+	t.Log("kava htlt claimed by deputy")
+
+	// 7) Check balances
+
+	bnbTestUserBalanceFinal, err := bnbExecutor.GetBalance(bnbTestUserAddr)
+	require.NoError(t, err)
+	kavaTestUserBalanceFinal, err := kavaExecutor.GetBalance(kavaTestUserAddr)
+	require.NoError(t, err)
+
+	expectedKavaBalance := big.NewInt(0)
+	expectedKavaBalance.Sub(kavaTestUserBalance, swapAmount)
+	require.Zerof(
+		t,
+		expectedKavaBalance.Cmp(kavaTestUserBalanceFinal),
+		"expected: %, actual: %s",
+		expectedKavaBalance,
+		kavaTestUserBalanceFinal,
+	)
+
+	var swapAmountBnb = &big.Int{}
+	swapAmountBnb.Sub(swapAmount, config.ChainConfig.OtherChainFixedFee)
+	require.Zero(t, config.ChainConfig.OtherChainRatio.Cmp(big.NewFloat(1)), "test does not support ratio conversions other than 1")
+	require.Zero(
+		t,
+		new(big.Int).Add(bnbTestUserBalance, swapAmountBnb).Cmp(bnbTestUserBalanceFinal),
 	)
 }
 

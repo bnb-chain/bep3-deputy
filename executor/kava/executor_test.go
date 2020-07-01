@@ -14,6 +14,7 @@ import (
 
 	"github.com/binance-chain/bep3-deputy/store"
 	"github.com/binance-chain/bep3-deputy/util"
+	"github.com/binance-chain/bep3-deputy/common"
 )
 
 func TestSendAmount(t *testing.T) {
@@ -54,7 +55,7 @@ func TestSendAmount(t *testing.T) {
 	require.Equal(t, balance, previousBalance.Add(previousBalance, amountToSend))
 }
 
-func waitUntilTxInBlock(executor *Executor, txHash string, timeout time.Duration) {
+func waitUntilTxInBlock(executor common.Executor, txHash string, timeout time.Duration) {
 	var status store.TxStatus
 	endTime := time.Now().Add(timeout)
 
