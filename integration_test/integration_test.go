@@ -242,7 +242,7 @@ func TestKavaToBnbSwap(t *testing.T) {
 	require.NoError(t, err)
 	bnbSwapID := ec.BytesToHash(bnbSwapIDBz)
 
-	err = wait(15*time.Second, func() (bool, error) {
+	err = wait(25*time.Second, func() (bool, error) {
 		return bnbExecutor.HasSwap(bnbSwapID)
 	})
 	require.NoError(t, err)
