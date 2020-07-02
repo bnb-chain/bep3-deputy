@@ -31,8 +31,6 @@ kvd add-genesis-account $(kvcli keys show validator -a) 1000000000ukava
 # Create deputy keys and add account to genesis
 printf "$deputyMnemonic\n" | kvcli keys add deputy --recover
 kvd add-genesis-account $(kvcli keys show deputy -a) 10000000ukava,100000000000000bnb
-# TODO kava1ffv7nhd3z6sych2qpqkk03ec6hzkmufy0r2s4c
-# kavapub1addwnpepqfjcpzn0xapflfpperm520hzmahdhhjaqs0ses4vv4r9a6cmaaq8kq7r6q0
 # # Create deputy keys but don't add account to genesis
 printf "$coldWalletMnemonic\n" | kvcli keys add cold-wallet --recover
 # Create test user keys and add account to genesis
@@ -46,5 +44,5 @@ kvd collect-gentxs
 # Sanity check to make sure genesis hasn't got messed up
 kvd validate-genesis
 
-# start the blockchain in the background, record the process id so that it can be stopped, wait until it starts making blocks
+# start the blockchain, and set rpc to listen to connections from outside the container
 kvd start --pruning nothing --rpc.laddr "tcp://0.0.0.0:26657"

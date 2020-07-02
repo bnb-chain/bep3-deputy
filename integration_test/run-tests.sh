@@ -8,9 +8,9 @@ set -e
 # start up the deputy and chains
 docker-compose up -d
 
+sleep 5
 # run tests
 # don't exit on error, just capture exit code (https://stackoverflow.com/questions/11231937/bash-ignoring-error-for-a-particular-command)
-sleep 5
 go test . -tags integration -v && exitStatus=$? || exitStatus=$?
 
 # remove the deputy and chains
