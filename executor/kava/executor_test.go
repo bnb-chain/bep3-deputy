@@ -12,9 +12,9 @@ import (
 	app "github.com/kava-labs/go-sdk/kava"
 	"github.com/stretchr/testify/require"
 
+	"github.com/binance-chain/bep3-deputy/common"
 	"github.com/binance-chain/bep3-deputy/store"
 	"github.com/binance-chain/bep3-deputy/util"
-	"github.com/binance-chain/bep3-deputy/common"
 )
 
 func TestSendAmount(t *testing.T) {

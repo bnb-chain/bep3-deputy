@@ -9,10 +9,6 @@ import (
 	"testing"
 	"time"
 
-	bnbExe "github.com/binance-chain/bep3-deputy/executor/bnb"
-	kavaExe "github.com/binance-chain/bep3-deputy/executor/kava"
-	"github.com/binance-chain/bep3-deputy/store"
-	"github.com/binance-chain/bep3-deputy/util"
 	"github.com/binance-chain/go-sdk/common/types"
 	bnbKeys "github.com/binance-chain/go-sdk/keys"
 	ec "github.com/ethereum/go-ethereum/common"
@@ -22,6 +18,11 @@ import (
 	"github.com/kava-labs/go-sdk/kava/bep3"
 	kavaKeys "github.com/kava-labs/go-sdk/keys"
 	"github.com/stretchr/testify/require"
+
+	bnbExe "github.com/binance-chain/bep3-deputy/executor/bnb"
+	kavaExe "github.com/binance-chain/bep3-deputy/executor/kava"
+	"github.com/binance-chain/bep3-deputy/store"
+	"github.com/binance-chain/bep3-deputy/util"
 )
 
 const (
