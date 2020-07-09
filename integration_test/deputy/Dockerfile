@@ -53,10 +53,5 @@ ENV CONFIG_TYPE "local"
 ENV AWS_REGION ""
 ENV AWS_SECRET_KEY ""
 
-# Run as non-root user for security
-# USER 1000 # TODO
-
-VOLUME [ $DEPUTY_HOME ]
-
 # Run the app
 CMD ./build/deputy --bnb-network $BNB_NETWORK --config-type $CONFIG_TYPE --config-path $CONFIG_FILE_PATH --aws-region $AWS_REGION --aws-secret-key $AWS_SECRET_KEY
