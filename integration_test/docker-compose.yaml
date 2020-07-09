@@ -7,16 +7,16 @@ services:
             # open rpc port
             - "26658:26657"
         volumes:
-            - "./bnbchain/start-new-chain.sh:/opt/bnbchaind/start-new-chain.sh"
-        command: ["bash", "/opt/bnbchaind/start-new-chain.sh"]
+            - "./bnbchain/start-new-chain.sh:/root/scripts/start-new-chain.sh"
+        command: ["bash", "/root/scripts/start-new-chain.sh"]
     deputy:
         build:
-            context: ".." # relative to docker-compose.yaml
-            dockerfile: "integration_test/deputy/Dockerfile" # relative to context directory
+            context: ".." # this path is relative to docker-compose.yaml
+            dockerfile: "integration_test/deputy/Dockerfile" # this path is relative to context directory
         volumes:
             - "./deputy/config.json:/deputy/config/config.json"
     kavanode:
-        image: "kava/kava-deputy-test:v0.8.1" # TODO change name?
+        image: "kava/kava:v0.9.1"
         ports:
             # open default kava rpc port
             - "26657:26657"
