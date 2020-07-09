@@ -1,25 +1,10 @@
-# Start by using binance's node-binary dockerfile. This was built and uploaded to kava dockerhub.
-FROM kava/bnbchain:0.6.3
+FROM ubuntu:18.04
 
-# Install some utilities for setup and debugging
-RUN apt-get update
-RUN apt-get install -y curl moreutils jq
+RUN apt-get update && apt-get install -y ca-certificates wget moreutils jq
 
-# The node binaries are in /node-binary, ie /node-binary/fullnode/prod/0.6.3/linux/bnbchaind
-# Add the latest version to the PATH for ease of use:
-RUN ln -sf /node-binary/fullnode/prod/0.6.3/linux/bnbchaind /usr/local/bin/bnbchaind
-RUN ln -sf /node-binary/cli/prod/0.6.3/linux/bnbcli /usr/local/bin/bnbcli
-#chmod +x /usr/local/bin/bnbchaind ??
+ARG BVER=0.6.3
+ARG CLIVER=0.6.3
 
-# These are the default data directories for the chain and cli.
-# You can mount local directories to these locations if you want access to the data outside of the container.
-# eg docker run -it --rm -v /Users/someone/.bnbchaind:/root/.bnbchaind -v /Users/someone/.bnbcli:/root/.bnbcli kava.bnbchaintesting:0.6.3 bnbchaind init
-VOLUME "/root/.bnbchaind"
-VOLUME "/root/.bnbcli"
-
-# Remove binance's custom entry point
-ENTRYPOINT []
-
-# Set the default command
-CMD bnbchaind
-
+RUN wget -O /usr/local/bin/bnbchaind https://github.com/binance-chain/node-binary/raw/master/fullnode/prod/${BVER}/linux/bnbchaind
+RUN wget -O /usr/local/bin/bnbcli https://github.com/binance-chain/node-binary/raw/master/cli/prod/${CLIVER}/linux/bnbcli
+RUN chmod u+x /usr/local/bin/bnbchaind /usr/local/bin/bnbcli

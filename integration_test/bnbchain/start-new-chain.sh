@@ -1,4 +1,8 @@
-#! /usr/bin/bash
+#! /bin/bash
+
+set -e
+
+BNCHOME=${HOME}/.bnbchaind
 
 # Setup keys
 # deputy bnb1uky3me9ggqypmrsvxk7ur6hqkzq7zmv4ed4ng7
@@ -9,13 +13,17 @@ printf "password\nfancy lazy report bird holiday original save early fun lunar s
 printf "password\nthen nuclear favorite advance plate glare shallow enhance replace embody list dose quick scale service sentence hover announce advance nephew phrase order useful this\n" | bnbcli keys add test-user --recover
 
 # Init a new chain
-bnbchaind init --moniker validatorName --chain-id Binance-Chain-Tigris --overwrite
+bnbchaind init --moniker validatorName --chain-id Binance-Chain-Tigris --overwrite --home $BNCHOME
 
 # Add the two accounts to the genesis file (when the chain starts these will be populated with coins)
-jq ".app_state.accounts[1].name=\"deputy\"" ~/.bnbchaind/config/genesis.json | sponge ~/.bnbchaind/config/genesis.json
-jq ".app_state.accounts[1].address=\"$(bnbcli keys show deputy --address)\"" ~/.bnbchaind/config/genesis.json | sponge ~/.bnbchaind/config/genesis.json
+jq ".app_state.accounts[1].name=\"deputy\"" ${BNCHOME}/config/genesis.json | sponge ${BNCHOME}/config/genesis.json
+jq ".app_state.accounts[1].address=\"$(bnbcli keys show deputy --address)\"" ${BNCHOME}/config/genesis.json | sponge ${BNCHOME}/config/genesis.json
 
-jq ".app_state.accounts[2].name=\"test_user\"" ~/.bnbchaind/config/genesis.json | sponge ~/.bnbchaind/config/genesis.json
-jq ".app_state.accounts[2].address=\"$(bnbcli keys show test-user --address)\"" ~/.bnbchaind/config/genesis.json | sponge ~/.bnbchaind/config/genesis.json
+jq ".app_state.accounts[2].name=\"test_user\"" ${BNCHOME}/config/genesis.json | sponge ${BNCHOME}/config/genesis.json
+jq ".app_state.accounts[2].address=\"$(bnbcli keys show test-user --address)\"" ${BNCHOME}/config/genesis.json | sponge ${BNCHOME}/config/genesis.json
 
-bnbchaind start
+# Turn on console logging
+# sed -i 's/logToConsole = false/logToConsole = true/g' ${BNCHOME}/config/app.toml
+
+# Start chain
+bnbchaind --home $BNCHOME start
