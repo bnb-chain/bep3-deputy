@@ -34,6 +34,10 @@ cleanup_after_test_with_deadlock:
 	find . -name "*.go" | xargs -n 1 goimports -w
 	find . -name "*.go.mutex_bak" | xargs rm
 
+
+test_integration:
+	cd integration_test && run-tests.sh
+
 update_mock_executor:
 	go get github.com/golang/mock/gomock
 	go install github.com/golang/mock/mockgen

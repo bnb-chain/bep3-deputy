@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+    bnbnode:
+        build: "./bnbchain"
+        ports:
+            # open rpc port
+            - "26658:26657"
+        volumes:
+            - "./bnbchain/start-new-chain.sh:/root/scripts/start-new-chain.sh"
+        command: ["bash", "/root/scripts/start-new-chain.sh"]
+    deputy:
+        build:
+            context: ".." # this path is relative to docker-compose.yaml
+            dockerfile: "integration_test/deputy/Dockerfile" # this path is relative to context directory
+        volumes:
+            - "./deputy/config.json:/deputy/config/config.json"
+    kavanode:
+        image: "kava/kava:v0.9.1"
+        ports:
+            # open default kava rpc port
+            - "26657:26657"
+        volumes:
+            - "./kava/:/root/kava/config"
+        command: ["bash", "/root/kava/config/start-new-chain.sh"]

@@ -12,6 +12,7 @@ import (
 	app "github.com/kava-labs/go-sdk/kava"
 	"github.com/stretchr/testify/require"
 
+	"github.com/binance-chain/bep3-deputy/common"
 	"github.com/binance-chain/bep3-deputy/store"
 	"github.com/binance-chain/bep3-deputy/util"
 )
@@ -54,7 +55,7 @@ func TestSendAmount(t *testing.T) {
 	require.Equal(t, balance, previousBalance.Add(previousBalance, amountToSend))
 }
 
-func waitUntilTxInBlock(executor *Executor, txHash string, timeout time.Duration) {
+func waitUntilTxInBlock(executor common.Executor, txHash string, timeout time.Duration) {
 	var status store.TxStatus
 	endTime := time.Now().Add(timeout)
 

@@ -463,13 +463,7 @@ func (executor *Executor) GetBalance(addressString string) (*big.Int, error) {
 		return big.NewInt(0), err
 	}
 
-	for _, coin := range deputy.Coins {
-		if coin.Denom == executor.Config.Symbol {
-			return big.NewInt(coin.Amount.Int64()), nil
-		}
-	}
-
-	return big.NewInt(0), fmt.Errorf(fmt.Sprintf("deputy doesn't have any %s", executor.Config.Symbol))
+	return deputy.Coins.AmountOf(executor.Config.Symbol).BigInt(), nil
 }
 
 // GetDeputyAddress gets the deputy's address from the config
