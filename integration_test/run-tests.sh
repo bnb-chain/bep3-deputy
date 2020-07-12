@@ -9,9 +9,12 @@ set -e
 docker-compose up -d
 
 # wait until the deputy is operational
-while ! docker-compose exec deputy curl localhost:8080/status; do
- sleep 1
+echo "waiting for deputy to start"
+while ! docker-compose exec deputy curl --fail localhost:8080/status > /dev/null
+do
+    sleep 1
 done
+echo "done"
 
 # run tests
 # don't exit on error, just capture exit code (https://stackoverflow.com/questions/11231937/bash-ignoring-error-for-a-particular-command)
