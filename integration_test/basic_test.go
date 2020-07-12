@@ -27,30 +27,31 @@ import (
 	"github.com/binance-chain/bep3-deputy/util"
 )
 
-const (
-	// these are the same as the menmonics in the chains and deputy configs
-	bnbDeputyMnemonic    = "clinic soap symptom alter mango orient punch table seek among broken bundle best dune hurt predict liquid subject silver once kick metal okay moment"
-	kavaDeputyMnemonic   = "equip town gesture square tomorrow volume nephew minute witness beef rich gadget actress egg sing secret pole winter alarm law today check violin uncover"
-	kavaTestUserMnemonic = "very health column only surface project output absent outdoor siren reject era legend legal twelve setup roast lion rare tunnel devote style random food"
-	bnbTestUserMnemonic  = "then nuclear favorite advance plate glare shallow enhance replace embody list dose quick scale service sentence hover announce advance nephew phrase order useful this"
-
-	bnbHTLTFee = 37500
-)
+const bnbHTLTFee = 37500
 
 var (
-	// kavaTestUserMnemonics = []string{
-	// 	"very health column only surface project output absent outdoor siren reject era legend legal twelve setup roast lion rare tunnel devote style random food",
-	// 	"curtain camp spoil tiny vehicle pottery deer corn truly banner salmon lift yard throw open move state lamp van sign glow glue shrug faith",
-	// 	"desert october mammal tuition illness album engine solid enjoy harvest symptom rely camera unable okay avocado actual oppose remember lady dove canal argue cave",
-	// 	"profit law bounce grunt earth ice share skill valve awful around shoot include kite lecture also smooth ball vintage snake embark brief ill gather",
-	// 	"census museum crew rude tower vapor mule rib weasel faith page cushion rain inherit much cram that blanket occur region track hub zero topple",
-	// 	"flavor print loyal canyon expand salmon century field say frequent human dinosaur frame claim bridge affair web way direct win become merry crash frequent",
-	// }
+	// these are the same as the menmonics in the chains and deputy configs
+	bnbDeputyMnemonic  = "clinic soap symptom alter mango orient punch table seek among broken bundle best dune hurt predict liquid subject silver once kick metal okay moment"
+	kavaDeputyMnemonic = "equip town gesture square tomorrow volume nephew minute witness beef rich gadget actress egg sing secret pole winter alarm law today check violin uncover"
 
+	kavaUserMnemonics = []string{
+		"very health column only surface project output absent outdoor siren reject era legend legal twelve setup roast lion rare tunnel devote style random food",
+		"curtain camp spoil tiny vehicle pottery deer corn truly banner salmon lift yard throw open move state lamp van sign glow glue shrug faith",
+		"desert october mammal tuition illness album engine solid enjoy harvest symptom rely camera unable okay avocado actual oppose remember lady dove canal argue cave",
+		"profit law bounce grunt earth ice share skill valve awful around shoot include kite lecture also smooth ball vintage snake embark brief ill gather",
+		"census museum crew rude tower vapor mule rib weasel faith page cushion rain inherit much cram that blanket occur region track hub zero topple",
+		"flavor print loyal canyon expand salmon century field say frequent human dinosaur frame claim bridge affair web way direct win become merry crash frequent",
+	}
+	bnbUserMnemonics = []string{
+		"then nuclear favorite advance plate glare shallow enhance replace embody list dose quick scale service sentence hover announce advance nephew phrase order useful this",
+		"almost design doctor exist destroy candy zebra insane client grocery govern idea library degree two rebuild coffee hat scene deal average fresh measure potato",
+		"welcome bean crystal pave chapter process bless tribe inside bottom exhaust hollow display envelope rally moral admit round hidden junk silly afraid awesome muffin",
+		"end bicycle walnut empty bus silly camera lift fancy symptom office pluck detail unable cry sense scrap tuition relax amateur hold win debate hat",
+		"cloud deal hurdle sound scout merit carpet identify fossil brass ancient keep disorder save lobster whisper course intact winter bullet flame mother upgrade install",
+		"mutual duck begin remind release brave patrol squeeze abandon pact valid close fragile plastic disorder saddle bring inspire corn kitten reduce candy side honey",
+	}
 	bnbDeputyAddr, kavaDeputyAddr string
-	bnbTestUserAddr               string
-	// kavaTestUserAddrs             []string
-	kavaTestUserAddr string
+	bnbUserAddrs, kavaUserAddrs   []string
 )
 
 func TestMain(m *testing.M) {
@@ -58,27 +59,14 @@ func TestMain(m *testing.M) {
 	kava.SetBech32AddressPrefixes(kavaConfig)
 	kavaConfig.Seal()
 
-	bnbManager, err := bnbKeys.NewMnemonicKeyManager(bnbDeputyMnemonic)
-	if err != nil {
-		panic(err.Error())
+	bnbDeputyAddr = bnbAddressFromMnemonic(bnbDeputyMnemonic)
+	for _, m := range bnbUserMnemonics {
+		bnbUserAddrs = append(bnbUserAddrs, bnbAddressFromMnemonic(m))
 	}
-	bnbDeputyAddr = bnbManager.GetAddr().String()
-	bnbManager, err = bnbKeys.NewMnemonicKeyManager(bnbTestUserMnemonic)
-	if err != nil {
-		panic(err.Error())
+	kavaDeputyAddr = kavaAddressFromMnemonic(kavaDeputyMnemonic)
+	for _, m := range kavaUserMnemonics {
+		kavaUserAddrs = append(kavaUserAddrs, kavaAddressFromMnemonic(m))
 	}
-	bnbTestUserAddr = bnbManager.GetAddr().String()
-
-	kavaManager, err := kavaKeys.NewMnemonicKeyManager(kavaDeputyMnemonic, kava.Bip44CoinType)
-	if err != nil {
-		panic(err.Error())
-	}
-	kavaDeputyAddr = kavaManager.GetAddr().String()
-	kavaManager, err = kavaKeys.NewMnemonicKeyManager(kavaTestUserMnemonic, kava.Bip44CoinType)
-	if err != nil {
-		panic(err.Error())
-	}
-	kavaTestUserAddr = kavaManager.GetAddr().String()
 
 	os.Exit(m.Run())
 }
@@ -184,7 +172,7 @@ func TestBnbToKavaSwap(t *testing.T) {
 	config := util.ParseConfigFromFile("deputy/config.json")
 	bnbConfig := config.BnbConfig
 	bnbConfig.RpcAddr = "tcp://localhost:26658"
-	bnbConfig.Mnemonic = bnbTestUserMnemonic
+	bnbConfig.Mnemonic = bnbUserMnemonics[0]
 
 	senderExecutor := bnbExe.NewExecutor(types.ProdNetwork, bnbConfig)
 
@@ -194,8 +182,8 @@ func TestBnbToKavaSwap(t *testing.T) {
 
 	receiverExecutor := kavaExe.NewExecutor(client.LocalNetwork, kavaConfig)
 
-	senderAddr := bnbTestUserAddr
-	receiverAddr := kavaTestUserAddr
+	senderAddr := bnbUserAddrs[0]
+	receiverAddr := kavaUserAddrs[0]
 
 	// 2) Cache account balances
 
@@ -244,7 +232,7 @@ func TestKavaToBnbSwap(t *testing.T) {
 
 	kavaConfig := config.KavaConfig
 	kavaConfig.RpcAddr = "tcp://localhost:26657"
-	kavaConfig.Mnemonic = kavaTestUserMnemonic
+	kavaConfig.Mnemonic = kavaUserMnemonics[0]
 	senderExecutor := kavaExe.NewExecutor(client.LocalNetwork, kavaConfig)
 
 	bnbConfig := config.BnbConfig
@@ -252,8 +240,8 @@ func TestKavaToBnbSwap(t *testing.T) {
 	bnbConfig.Mnemonic = bnbDeputyMnemonic
 	receiverExecutor := bnbExe.NewExecutor(types.ProdNetwork, bnbConfig)
 
-	senderAddr := kavaTestUserAddr
-	receiverAddr := bnbTestUserAddr
+	senderAddr := kavaUserAddrs[0]
+	receiverAddr := bnbUserAddrs[0]
 
 	// 2) Cache account balances
 
@@ -306,4 +294,20 @@ func wait(timeout time.Duration, shouldStop func() (bool, error)) error {
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
+}
+
+func bnbAddressFromMnemonic(mnemonic string) string {
+	manager, err := bnbKeys.NewMnemonicKeyManager(mnemonic)
+	if err != nil {
+		panic(err.Error())
+	}
+	return manager.GetAddr().String()
+}
+
+func kavaAddressFromMnemonic(mnemonic string) string {
+	manager, err := kavaKeys.NewMnemonicKeyManager(mnemonic, kava.Bip44CoinType)
+	if err != nil {
+		panic(err.Error())
+	}
+	return manager.GetAddr().String()
 }
