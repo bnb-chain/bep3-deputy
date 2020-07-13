@@ -33,8 +33,6 @@ type Erc20Executor struct {
 	Client            *ethclient.Client
 	SwapContractAddr  common.Address
 	TokenContractAddr common.Address
-
-	address common.Address
 }
 
 func NewErc20Executor(provider string, contractAddress common.Address, cfg *util.Config) *Erc20Executor {
@@ -61,6 +59,13 @@ func NewErc20Executor(provider string, contractAddress common.Address, cfg *util
 
 	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
 
+	if !bytes.Equal(cfg.EthConfig.DeputyAddr.Bytes(), fromAddress.Bytes()) {
+		panic(fmt.Sprintf(
+			"deputy address supplied in config (%s) does not match mnemonic (%s)",
+			cfg.EthConfig.DeputyAddr, fromAddress,
+		))
+	}
+
 	return &Erc20Executor{
 		Provider: provider,
 
@@ -70,8 +75,6 @@ func NewErc20Executor(provider string, contractAddress common.Address, cfg *util
 		TokenContractAddr: cfg.EthConfig.TokenContractAddr,
 
 		Config: cfg,
-
-		address: fromAddress,
 	}
 }
 
@@ -317,7 +320,7 @@ func (executor *Erc20Executor) GetTransactor() (*bind.TransactOpts, error) {
 		return nil, err
 	}
 
-	nonce, err := executor.Client.PendingNonceAt(context.Background(), executor.address)
+	nonce, err := executor.Client.PendingNonceAt(context.Background(), executor.Config.EthConfig.DeputyAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -394,13 +397,13 @@ func (executor *Erc20Executor) GetStatus() (interface{}, error) {
 	}
 	ethStatus.Allowance = util.QuoBigInt(allowance, util.GetBigIntForDecimal(executor.Config.ChainConfig.OtherChainDecimal)).String()
 
-	balance, err := executor.Erc20Balance(executor.address)
+	balance, err := executor.Erc20Balance(executor.Config.EthConfig.DeputyAddr)
 	if err != nil {
 		return nil, err
 	}
 	ethStatus.Erc20Balance = util.QuoBigInt(balance, util.GetBigIntForDecimal(executor.Config.ChainConfig.OtherChainDecimal)).String()
 
-	ethBalance, err := executor.EthBalance(executor.address)
+	ethBalance, err := executor.EthBalance(executor.Config.EthConfig.DeputyAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -418,7 +421,7 @@ func (executor *Erc20Executor) GetBalanceAlertMsg() (string, error) {
 
 	alertMsg := ""
 	if executor.Config.EthConfig.EthBalanceAlertThreshold.Cmp(big.NewInt(0)) > 0 {
-		ethBalance, err := executor.EthBalance(executor.address)
+		ethBalance, err := executor.EthBalance(executor.Config.EthConfig.DeputyAddr)
 		if err != nil {
 			return "", err
 		}
@@ -441,7 +444,7 @@ func (executor *Erc20Executor) GetBalanceAlertMsg() (string, error) {
 	}
 
 	if executor.Config.EthConfig.TokenBalanceAlertThreshold.Cmp(big.NewInt(0)) > 0 {
-		tokenBalance, err := executor.Erc20Balance(executor.address)
+		tokenBalance, err := executor.Erc20Balance(executor.Config.EthConfig.DeputyAddr)
 		if err != nil {
 			return "", err
 		}

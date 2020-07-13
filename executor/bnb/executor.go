@@ -1,6 +1,7 @@
 package bnb
 
 import (
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -30,8 +31,6 @@ type Executor struct {
 
 	NetworkType types.ChainNetwork
 	RpcClient   rpc.Client
-
-	DeputyAddress types.AccAddress
 }
 
 func NewExecutor(networkType types.ChainNetwork, cfg *util.BnbConfig) *Executor {
@@ -43,11 +42,16 @@ func NewExecutor(networkType types.ChainNetwork, cfg *util.BnbConfig) *Executor 
 	rpcClient := rpc.NewRPCClient(cfg.RpcAddr, networkType)
 	rpcClient.SetLogger(util.SdkLogger)
 
+	if !bytes.Equal(cfg.DeputyAddr.Bytes(), keyManager.GetAddr().Bytes()) {
+		panic(fmt.Sprintf(
+			"deputy address supplied in config (%s) does not match mnemonic (%s)",
+			cfg.DeputyAddr, keyManager.GetAddr(),
+		))
+	}
 	return &Executor{
-		Config:        cfg,
-		NetworkType:   networkType,
-		RpcClient:     rpcClient,
-		DeputyAddress: keyManager.GetAddr(),
+		Config:      cfg,
+		NetworkType: networkType,
+		RpcClient:   rpcClient,
 	}
 }
 func (executor *Executor) GetChain() string {
@@ -201,7 +205,9 @@ func (executor *Executor) HTLT(randomNumberHash ec.Hash, timestamp int64, height
 
 	if !outAmount.IsInt64() {
 		return "", common.NewError(
-			errors.New(fmt.Sprintf("out amount(%s) is not int64", outAmount.String())), false)
+			fmt.Errorf("out amount(%s) is not int64", outAmount),
+			false,
+		)
 	}
 
 	outCoin := types.Coin{
@@ -398,7 +404,7 @@ func (executor *Executor) GetBalance(addressString string) (*big.Int, error) {
 }
 
 func (executor *Executor) Balance() ([]types.TokenBalance, error) {
-	account, err := executor.RpcClient.GetAccount(executor.DeputyAddress)
+	account, err := executor.RpcClient.GetAccount(executor.Config.DeputyAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -460,7 +466,7 @@ func (executor *Executor) GetBalanceAlertMsg() (string, error) {
 		return "", nil
 	}
 
-	account, err := executor.RpcClient.GetAccount(executor.DeputyAddress)
+	account, err := executor.RpcClient.GetAccount(executor.Config.DeputyAddr)
 	if err != nil {
 		return "", err
 	}
@@ -502,7 +508,7 @@ func (executor *Executor) SendAmount(address string, amount *big.Int) (string, e
 
 	if !amount.IsInt64() {
 		return "", common.NewError(
-			errors.New(fmt.Sprintf("out amount(%s) is not int64", amount.String())),
+			fmt.Errorf("out amount(%s) is not int64", amount),
 			false,
 		)
 	}

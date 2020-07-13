@@ -29,14 +29,12 @@ var _ dc.Executor = &EthExecutor{}
 type EthExecutor struct {
 	Abi              abi.ABI
 	Provider         string
-	Config           *util.Config
+	Config           *util.EthConfig
 	Client           *ethclient.Client
 	SwapContractAddr common.Address
-
-	address common.Address
 }
 
-func NewEthExecutor(provider string, contractAddress common.Address, cfg *util.Config) *EthExecutor {
+func NewEthExecutor(provider string, contractAddress common.Address, cfg *util.EthConfig) *EthExecutor {
 	contractAbi, err := abi.JSON(strings.NewReader(da.ETHSwapABI))
 	if err != nil {
 		panic("marshal abi error")
@@ -47,7 +45,7 @@ func NewEthExecutor(provider string, contractAddress common.Address, cfg *util.C
 		panic("new eth client error")
 	}
 
-	privKey, err := getPrivateKey(cfg.EthConfig)
+	privKey, err := getPrivateKey(cfg)
 	if err != nil {
 		panic(fmt.Sprintf("generate private key error, err=%s", err.Error()))
 	}
@@ -60,14 +58,19 @@ func NewEthExecutor(provider string, contractAddress common.Address, cfg *util.C
 
 	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
 
+	if !bytes.Equal(cfg.DeputyAddr.Bytes(), fromAddress.Bytes()) {
+		panic(fmt.Sprintf(
+			"deputy address supplied in config (%s) does not match mnemonic (%s)",
+			cfg.DeputyAddr, fromAddress,
+		))
+	}
+
 	return &EthExecutor{
 		Provider:         provider,
 		Abi:              contractAbi,
 		Client:           client,
 		SwapContractAddr: contractAddress,
 		Config:           cfg,
-
-		address: fromAddress,
 	}
 }
 
@@ -96,7 +99,7 @@ func (executor *EthExecutor) GetBlockAndTxs(height int64) (*dc.BlockAndTxLogs, e
 }
 
 func (executor *EthExecutor) GetFetchInterval() time.Duration {
-	return time.Duration(executor.Config.EthConfig.FetchInterval) * time.Second
+	return time.Duration(executor.Config.FetchInterval) * time.Second
 }
 
 func (executor *EthExecutor) GetLogs(blockHash common.Hash) ([]*store.TxLog, error) {
@@ -168,7 +171,7 @@ func (executor *EthExecutor) HTLT(randomNumberHash common.Hash, timestamp int64,
 		}
 	}
 
-	auth.From = executor.address
+	auth.From = executor.Config.DeputyAddr
 	auth.Value = outAmount
 
 	tx, err := instance.Htlt(auth, randomNumberHash, uint64(timestamp), big.NewInt(heightSpan), recvAddr,
@@ -309,21 +312,21 @@ func (executor *EthExecutor) Claimable(swapId common.Hash) (bool, error) {
 }
 
 func (executor *EthExecutor) GetTransactor() (*bind.TransactOpts, error) {
-	privateKey, err := getPrivateKey(executor.Config.EthConfig)
+	privateKey, err := getPrivateKey(executor.Config)
 	if err != nil {
 		return nil, err
 	}
 
-	nonce, err := executor.Client.PendingNonceAt(context.Background(), executor.address)
+	nonce, err := executor.Client.PendingNonceAt(context.Background(), executor.Config.DeputyAddr)
 	if err != nil {
 		return nil, err
 	}
 
 	auth := bind.NewKeyedTransactor(privateKey)
 	auth.Nonce = big.NewInt(int64(nonce))
-	auth.Value = big.NewInt(0)                                 // in wei
-	auth.GasLimit = uint64(executor.Config.EthConfig.GasLimit) // in units
-	auth.GasPrice = executor.Config.EthConfig.GasPrice
+	auth.Value = big.NewInt(0)                       // in wei
+	auth.GasLimit = uint64(executor.Config.GasLimit) // in units
+	auth.GasPrice = executor.Config.GasPrice
 	return auth, nil
 }
 
@@ -337,11 +340,11 @@ func (executor *EthExecutor) EthBalance(address common.Address) (*big.Int, error
 }
 
 func (executor *EthExecutor) GetDeputyAddress() string {
-	return executor.Config.EthConfig.DeputyAddr.String()
+	return executor.Config.DeputyAddr.String()
 }
 
 func (executor *EthExecutor) GetColdWalletAddress() string {
-	return executor.Config.EthConfig.ColdWalletAddr.String()
+	return executor.Config.ColdWalletAddr.String()
 }
 
 func (executor *EthExecutor) CalcSwapId(randomNumberHash common.Hash, sender string, senderOtherChain string) ([]byte, error) {
@@ -365,7 +368,7 @@ func (executor *EthExecutor) IsSameAddress(addrA string, addrB string) bool {
 func (executor *EthExecutor) GetStatus() (interface{}, error) {
 	ethStatus := &dc.EthStatus{}
 
-	ethBalance, err := executor.EthBalance(executor.address)
+	ethBalance, err := executor.EthBalance(executor.Config.DeputyAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -376,20 +379,20 @@ func (executor *EthExecutor) GetStatus() (interface{}, error) {
 }
 
 func (executor *EthExecutor) GetBalanceAlertMsg() (string, error) {
-	if executor.Config.EthConfig.EthBalanceAlertThreshold.Cmp(big.NewInt(0)) == 0 {
+	if executor.Config.EthBalanceAlertThreshold.Cmp(big.NewInt(0)) == 0 {
 		return "", nil
 	}
 
 	alertMsg := ""
-	if executor.Config.EthConfig.EthBalanceAlertThreshold.Cmp(big.NewInt(0)) > 0 {
-		ethBalance, err := executor.EthBalance(executor.address)
+	if executor.Config.EthBalanceAlertThreshold.Cmp(big.NewInt(0)) > 0 {
+		ethBalance, err := executor.EthBalance(executor.Config.DeputyAddr)
 		if err != nil {
 			return "", err
 		}
 
-		if ethBalance.Cmp(executor.Config.EthConfig.EthBalanceAlertThreshold) < 0 {
+		if ethBalance.Cmp(executor.Config.EthBalanceAlertThreshold) < 0 {
 			alertMsg = alertMsg + fmt.Sprintf("eth balance(%s) is less than %s",
-				ethBalance.String(), executor.Config.EthConfig.EthBalanceAlertThreshold.String())
+				ethBalance.String(), executor.Config.EthBalanceAlertThreshold.String())
 		}
 	}
 	return alertMsg, nil

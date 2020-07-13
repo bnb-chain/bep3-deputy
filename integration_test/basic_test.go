@@ -27,10 +27,14 @@ import (
 	"github.com/binance-chain/bep3-deputy/util"
 )
 
-const bnbHTLTFee = 37500
+const (
+	bnbHTLTFee, bnbClaimFee, bnbRefundFee, bnbTransferFee = 37500, 37500, 37500, 37500
+	bnbNodeURL                                            = "tcp://localhost:26658"
+	kavaNodeURL                                           = "tcp://localhost:26657"
+)
 
 var (
-	// these are the same as the menmonics in the chains and deputy configs
+	// these are the same as the mnemonics in the chains and deputy configs
 	bnbDeputyMnemonic  = "clinic soap symptom alter mango orient punch table seek among broken bundle best dune hurt predict liquid subject silver once kick metal okay moment"
 	kavaDeputyMnemonic = "equip town gesture square tomorrow volume nephew minute witness beef rich gadget actress egg sing secret pole winter alarm law today check violin uncover"
 
@@ -59,13 +63,13 @@ func TestMain(m *testing.M) {
 	kava.SetBech32AddressPrefixes(kavaConfig)
 	kavaConfig.Seal()
 
-	bnbDeputyAddr = bnbAddressFromMnemonic(bnbDeputyMnemonic)
+	bnbDeputyAddr = bnbAddressFromMnemonic(bnbDeputyMnemonic).String()
 	for _, m := range bnbUserMnemonics {
-		bnbUserAddrs = append(bnbUserAddrs, bnbAddressFromMnemonic(m))
+		bnbUserAddrs = append(bnbUserAddrs, bnbAddressFromMnemonic(m).String())
 	}
-	kavaDeputyAddr = kavaAddressFromMnemonic(kavaDeputyMnemonic)
+	kavaDeputyAddr = kavaAddressFromMnemonic(kavaDeputyMnemonic).String()
 	for _, m := range kavaUserMnemonics {
-		kavaUserAddrs = append(kavaUserAddrs, kavaAddressFromMnemonic(m))
+		kavaUserAddrs = append(kavaUserAddrs, kavaAddressFromMnemonic(m).String())
 	}
 
 	os.Exit(m.Run())
@@ -75,7 +79,7 @@ type logger interface {
 	Log(args ...interface{})
 }
 
-func sendCompleteSwap(logger logger, senderExecutor, receiverExecutor common.Executor, senderAddr, receiverAddr string, swapAmount *big.Int, senderChainDeputyAddr string, heightSpan int64) error {
+func sendCompleteSwap(logger logger, senderExecutor, receiverExecutor common.Executor, senderAddr, receiverAddr string, swapAmount *big.Int, senderChainDeputyAddr, receiverChainDeputyAddr string, heightSpan int64) error {
 
 	// 1) Send initial swap
 
@@ -89,8 +93,8 @@ func sendCompleteSwap(logger logger, senderExecutor, receiverExecutor common.Exe
 		rndHash,
 		timestamp,
 		heightSpan,
-		senderChainDeputyAddr, // TODO
-		receiverExecutor.GetDeputyAddress(),
+		senderChainDeputyAddr,
+		receiverChainDeputyAddr,
 		receiverAddr,
 		swapAmount,
 	)
@@ -107,15 +111,15 @@ func sendCompleteSwap(logger logger, senderExecutor, receiverExecutor common.Exe
 	}
 	logger.Log("sender htlt created")
 
-	// 4) Wait until deputy relays swap to receiver chain
+	// 2) Wait until deputy relays swap to receiver chain
 
-	receiverSwapIDBz, err := receiverExecutor.CalcSwapId(rndHash, receiverExecutor.GetDeputyAddress(), senderAddr) // TODO senderAddr == senderExe.DeputyAddr
+	receiverSwapIDBz, err := receiverExecutor.CalcSwapId(rndHash, receiverChainDeputyAddr, senderAddr)
 	if err != nil {
 		return fmt.Errorf("couldn't calculate swap id: %w", err)
 	}
 	receiverSwapID := ec.BytesToHash(receiverSwapIDBz)
 
-	err = wait(20*time.Second, func() (bool, error) {
+	err = wait(60*time.Second, func() (bool, error) {
 		return receiverExecutor.HasSwap(receiverSwapID)
 	})
 	if err != nil {
@@ -124,7 +128,7 @@ func sendCompleteSwap(logger logger, senderExecutor, receiverExecutor common.Exe
 
 	logger.Log("swap created on receiver by deputy")
 
-	// 5) Send claim on receiver
+	// 3) Send claim on receiver
 
 	claimTxHash, cmnErr := receiverExecutor.Claim(receiverSwapID, ec.BytesToHash(rndNum))
 	if cmnErr != nil {
@@ -140,9 +144,9 @@ func sendCompleteSwap(logger logger, senderExecutor, receiverExecutor common.Exe
 
 	logger.Log("receiver htlt claimed")
 
-	// 6) Wait until deputy relays claim to sender chian
+	// 4) Wait until deputy relays claim to sender chian
 
-	senderSwapIDBz, err := senderExecutor.CalcSwapId(rndHash, senderAddr, receiverExecutor.GetDeputyAddress()) // TODO senderAddr == senderExe.DeputyAddr
+	senderSwapIDBz, err := senderExecutor.CalcSwapId(rndHash, senderAddr, receiverChainDeputyAddr)
 	if err != nil {
 		return fmt.Errorf("couldn't calculate swap id: %w", err)
 	}
@@ -170,19 +174,11 @@ func TestBnbToKavaSwap(t *testing.T) {
 	// 1) setup executors
 
 	config := util.ParseConfigFromFile("deputy/config.json")
-	bnbConfig := config.BnbConfig
-	bnbConfig.RpcAddr = "tcp://localhost:26658"
-	bnbConfig.Mnemonic = bnbUserMnemonics[0]
 
-	senderExecutor := bnbExe.NewExecutor(types.ProdNetwork, bnbConfig)
-
-	kavaConfig := config.KavaConfig
-	kavaConfig.RpcAddr = "tcp://localhost:26657"
-	kavaConfig.Mnemonic = kavaDeputyMnemonic
-
-	receiverExecutor := kavaExe.NewExecutor(client.LocalNetwork, kavaConfig)
-
+	senderExecutor := setupUserExecutorBnb(*config.BnbConfig, bnbUserMnemonics[0])
 	senderAddr := bnbUserAddrs[0]
+
+	receiverExecutor := setupUserExecutorKava(*config.KavaConfig, kavaUserMnemonics[0])
 	receiverAddr := kavaUserAddrs[0]
 
 	// 2) Cache account balances
@@ -195,7 +191,7 @@ func TestBnbToKavaSwap(t *testing.T) {
 	// 3) Send swap
 
 	swapAmount := big.NewInt(100_000_000)
-	err = sendCompleteSwap(t, senderExecutor, receiverExecutor, senderAddr, receiverAddr, swapAmount, bnbDeputyAddr, 20000)
+	err = sendCompleteSwap(t, senderExecutor, receiverExecutor, senderAddr, receiverAddr, swapAmount, bnbDeputyAddr, kavaDeputyAddr, 20000)
 	require.NoError(t, err)
 
 	// 4) Check balances
@@ -230,17 +226,10 @@ func TestKavaToBnbSwap(t *testing.T) {
 
 	config := util.ParseConfigFromFile("deputy/config.json")
 
-	kavaConfig := config.KavaConfig
-	kavaConfig.RpcAddr = "tcp://localhost:26657"
-	kavaConfig.Mnemonic = kavaUserMnemonics[0]
-	senderExecutor := kavaExe.NewExecutor(client.LocalNetwork, kavaConfig)
-
-	bnbConfig := config.BnbConfig
-	bnbConfig.RpcAddr = "tcp://localhost:26658"
-	bnbConfig.Mnemonic = bnbDeputyMnemonic
-	receiverExecutor := bnbExe.NewExecutor(types.ProdNetwork, bnbConfig)
-
+	senderExecutor := setupUserExecutorKava(*config.KavaConfig, kavaUserMnemonics[0])
 	senderAddr := kavaUserAddrs[0]
+
+	receiverExecutor := setupUserExecutorBnb(*config.BnbConfig, bnbUserMnemonics[0])
 	receiverAddr := bnbUserAddrs[0]
 
 	// 2) Cache account balances
@@ -253,7 +242,7 @@ func TestKavaToBnbSwap(t *testing.T) {
 	// 3) Send swap
 
 	swapAmount := big.NewInt(99_000_000)
-	err = sendCompleteSwap(t, senderExecutor, receiverExecutor, senderAddr, receiverAddr, swapAmount, kavaDeputyAddr, 250)
+	err = sendCompleteSwap(t, senderExecutor, receiverExecutor, senderAddr, receiverAddr, swapAmount, kavaDeputyAddr, bnbDeputyAddr, 250)
 	require.NoError(t, err)
 
 	// 4) Check balances
@@ -274,11 +263,26 @@ func TestKavaToBnbSwap(t *testing.T) {
 	swapAmountReceiver := new(big.Int)
 	swapAmountReceiver.Sub(swapAmount, config.ChainConfig.OtherChainFixedFee)
 	expectedReceiverBalance := new(big.Int).Add(receiverBalance, swapAmountReceiver)
+	expectedReceiverBalance.Sub(expectedReceiverBalance, big.NewInt(bnbClaimFee))
 	require.Zero(t, config.ChainConfig.OtherChainRatio.Cmp(big.NewFloat(1)), "test does not support ratio conversions other than 1")
 	require.Zerof(t,
 		expectedReceiverBalance.Cmp(receiverBalanceFinal),
 		"expected: %s, actual: %s", expectedReceiverBalance, receiverBalanceFinal,
 	)
+}
+
+func setupUserExecutorBnb(bnbConfig util.BnbConfig, mnemonic string) *bnbExe.Executor {
+	bnbConfig.RpcAddr = bnbNodeURL
+	bnbConfig.Mnemonic = mnemonic
+	bnbConfig.DeputyAddr = bnbAddressFromMnemonic(mnemonic) // not the actual deputy address
+	return bnbExe.NewExecutor(types.ProdNetwork, &bnbConfig)
+}
+
+func setupUserExecutorKava(kavaConfig util.KavaConfig, mnemonic string) *kavaExe.Executor {
+	kavaConfig.RpcAddr = kavaNodeURL
+	kavaConfig.Mnemonic = mnemonic
+	kavaConfig.DeputyAddr = kavaAddressFromMnemonic(mnemonic) // not the actual deputy address
+	return kavaExe.NewExecutor(client.LocalNetwork, &kavaConfig)
 }
 
 func wait(timeout time.Duration, shouldStop func() (bool, error)) error {
@@ -296,18 +300,18 @@ func wait(timeout time.Duration, shouldStop func() (bool, error)) error {
 	}
 }
 
-func bnbAddressFromMnemonic(mnemonic string) string {
+func bnbAddressFromMnemonic(mnemonic string) types.AccAddress {
 	manager, err := bnbKeys.NewMnemonicKeyManager(mnemonic)
 	if err != nil {
 		panic(err.Error())
 	}
-	return manager.GetAddr().String()
+	return manager.GetAddr()
 }
 
-func kavaAddressFromMnemonic(mnemonic string) string {
+func kavaAddressFromMnemonic(mnemonic string) sdk.AccAddress {
 	manager, err := kavaKeys.NewMnemonicKeyManager(mnemonic, kava.Bip44CoinType)
 	if err != nil {
 		panic(err.Error())
 	}
-	return manager.GetAddr().String()
+	return manager.GetAddr()
 }

@@ -120,14 +120,18 @@ func (deputy *Deputy) sendOtherHTLT(swap *store.Swap) (string, error) {
 			swap.OtherChainAddr, swap.SenderAddr, deputy.BnbExecutor.GetDeputyAddress(), actualOutAmount)
 
 		if cmnErr != nil {
-			errMsg := fmt.Sprintf("send chain %s HTLT tx error, bnb_swap_id=%s, err=%s", deputy.OtherExecutor.GetChain(),
-				swap.BnbChainSwapId, cmnErr.Error())
+			errMsg := fmt.Sprintf(
+				"send chain %s HTLT tx error, bnb_swap_id=%s, is_retryable=%t, err=%s",
+				deputy.OtherExecutor.GetChain(), swap.BnbChainSwapId, cmnErr.Retryable(), cmnErr.Error(),
+			)
 			deputy.sendTgMsg(errMsg)
 
 			// is error retryable
 			if !cmnErr.Retryable() {
 				txSent.ErrMsg = cmnErr.Error()
 				txSent.Status = store.TxSentStatusFailed
+				// TODO should txHash be set? Should it always be returned from HTLT?
+				// if not then CheckTxSent will try and lookup txs based on an empty hash, seems wrong
 				deputy.UpdateSwapStatus(swap, store.SwapStatusOtherHTLTSentFailed, actualOutAmount.String())
 				deputy.DB.Create(txSent)
 			}
