@@ -580,5 +580,5 @@ func (executor *Executor) SendAmount(address string, amount *big.Int) (string, e
 }
 
 func isInvalidSequenceError(err string) bool {
-	return strings.Contains(strings.ToLower(err), "invalid sequence")
+	return strings.Contains(strings.ToLower(err), "signature verification failed")
 }
