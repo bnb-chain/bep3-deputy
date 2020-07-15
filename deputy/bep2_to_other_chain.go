@@ -130,7 +130,6 @@ func (deputy *Deputy) sendOtherHTLT(swap *store.Swap) (string, error) {
 			if !cmnErr.Retryable() {
 				txSent.ErrMsg = cmnErr.Error()
 				txSent.Status = store.TxSentStatusFailed
-				// TODO txSent.TxHash not set. This breaks unique db index.
 				deputy.UpdateSwapStatus(swap, store.SwapStatusOtherHTLTSentFailed, actualOutAmount.String())
 				deputy.DB.Create(txSent)
 			}

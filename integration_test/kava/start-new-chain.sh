@@ -44,7 +44,7 @@ printf "$deputyMnemonic\n" | kvcli keys add deputy --recover
 kvd add-genesis-account $(kvcli keys show deputy -a) 10000000ukava,100000000000000bnb
 # # Create deputy keys but don't add account to genesis
 printf "$coldWalletMnemonic\n" | kvcli keys add cold-wallet --recover
-# Create test user keys and add account to genesis
+# Create test user keys and add accounts to genesis
 for i in {0..5}
 do
     printf "${testUserMnemonics[$i]}\n" | kvcli keys add test-user$i --recover
