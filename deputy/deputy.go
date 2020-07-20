@@ -428,20 +428,16 @@ func (deputy *Deputy) CheckTxSent() {
 	txsSent := deputy.GetTxsSentByStatus([]store.TxStatus{store.TxSentStatusInit, store.TxSentStatusNotFound, store.TxSentStatusPending})
 
 	for _, txSent := range txsSent {
-		var status = store.TxSentStatusInit
-		if txSent.Chain == deputy.OtherExecutor.GetChain() {
+		// Get status of tx from chain
+		var status store.TxStatus
+		switch txSent.Chain {
+		case deputy.OtherExecutor.GetChain():
 			status = deputy.OtherExecutor.GetSentTxStatus(txSent.TxHash)
-		} else if txSent.Chain == deputy.BnbExecutor.GetChain() {
+		case deputy.BnbExecutor.GetChain():
 			status = deputy.BnbExecutor.GetSentTxStatus(txSent.TxHash)
-		} else {
-			util.Logger.Errorf("unexpected sent tx %s", txSent.TxHash)
+		default:
+			util.Logger.Errorf("found TxSent with unexpected chain id: '%s', hash %s", txSent.Chain, txSent.TxHash)
 			continue
-		}
-
-		if status == store.TxSentStatusFailed {
-			errMsg := fmt.Sprintf("tx sent on chain %s failed, swap_id=%s, tx_type=%s, err_msg=%s",
-				txSent.Chain, txSent.SwapId, txSent.Type, txSent.ErrMsg)
-			deputy.sendTgMsg(errMsg)
 		}
 
 		deputy.UpdateTxSentStatus(txSent, status)
@@ -469,16 +465,20 @@ func (deputy *Deputy) handleTxSent(swap *store.Swap, chain string, txType store.
 
 		if len(txsSent) >= autoRetryNum {
 			deputy.UpdateSwapStatus(swap, failedStatus, "")
+			deputy.sendTgMsg(fmt.Sprintf(
+				"set swap status to %s other_id=%s bnb_id=%s: tx timed out too many times tx_hash=%s",
+				failedStatus, swap.OtherChainSwapId, swap.BnbChainSwapId, latestTx.TxHash,
+			))
 		} else {
 			deputy.UpdateSwapStatus(swap, backwardStatus, "")
 		}
 		deputy.UpdateTxSentStatus(latestTx, store.TxSentStatusLost)
 	} else if txStatus == store.TxSentStatusFailed {
-		errMsg := fmt.Sprintf("tx on chain %s failed, marked swap status to %s, tx_hash=%s, bnb_swap_id=%s, other_chain_swap_id=%s, random_number_hash=%s",
-			chain, failedStatus, latestTx.TxHash, swap.BnbChainSwapId, swap.OtherChainSwapId, swap.RandomNumberHash)
-		deputy.sendTgMsg(errMsg)
-
 		deputy.UpdateSwapStatus(swap, failedStatus, "")
+		deputy.sendTgMsg(fmt.Sprintf(
+			"set swap status to %s other_id=%s bnb_id=%s: tx rejected from block tx_hash=%",
+			failedStatus, swap.OtherChainSwapId, swap.BnbChainSwapId, latestTx.TxHash,
+		))
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 func GetBigIntForDecimal(decimal int) *big.Int {
@@ -39,6 +40,10 @@ func SendTelegramMessage(botId string, chatId string, msg string) {
 		return
 	}
 
+	// timeout requests to avoid unexpected delays from to logging
+	httpClient := http.Client{
+		Timeout: 10 * time.Second,
+	}
 	endPoint := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", botId)
 	formData := url.Values{
 		"chat_id":    {chatId},
@@ -46,7 +51,7 @@ func SendTelegramMessage(botId string, chatId string, msg string) {
 		"text":       {msg},
 	}
 	Logger.Infof("send tg message, bot_id=%s, chat_id=%s, msg=%s", botId, chatId, msg)
-	res, err := http.PostForm(endPoint, formData)
+	res, err := httpClient.PostForm(endPoint, formData)
 	if err != nil {
 		Logger.Errorf("send telegram message error, bot_id=%s, chat_id=%s, msg=%s, err=%s", botId, chatId, msg, err.Error())
 		return
