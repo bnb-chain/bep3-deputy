@@ -476,7 +476,7 @@ func (deputy *Deputy) handleTxSent(swap *store.Swap, chain string, txType store.
 	} else if txStatus == store.TxSentStatusFailed {
 		deputy.UpdateSwapStatus(swap, failedStatus, "")
 		deputy.sendTgMsg(fmt.Sprintf(
-			"set swap status to %s other_id=%s bnb_id=%s: tx rejected from block tx_hash=%",
+			"set swap status to %s other_id=%s bnb_id=%s: tx rejected from block tx_hash=%s",
 			failedStatus, swap.OtherChainSwapId, swap.BnbChainSwapId, latestTx.TxHash,
 		))
 	}

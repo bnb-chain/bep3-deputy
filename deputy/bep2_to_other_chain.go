@@ -83,7 +83,6 @@ func (deputy *Deputy) sendOtherHTLT(swap *store.Swap) (string, error) {
 			return "", fmt.Errorf("query chain %s swap error, other_chain_swap_id=%s, err=%s",
 				deputy.OtherExecutor.GetChain(), swap.OtherChainSwapId, err.Error())
 		} else if isExist {
-			// TODO does this mean the deputy will keep retrying forever? dos vector
 			return "", fmt.Errorf("chain %s swap already exists, other_chain_swap_id=%s",
 				deputy.OtherExecutor.GetChain(), swap.OtherChainSwapId)
 		}
@@ -139,7 +138,7 @@ func (deputy *Deputy) sendOtherHTLT(swap *store.Swap) (string, error) {
 		if cmnErr != nil {
 
 			// is error retryable
-			if !cmnErr.Retryable() { // TODO make more errors retryable
+			if !cmnErr.Retryable() {
 				txSent.ErrMsg = cmnErr.Error()
 				txSent.Status = store.TxSentStatusFailed
 				deputy.UpdateSwapStatus(swap, store.SwapStatusOtherHTLTSentFailed, actualOutAmount.String())
@@ -228,7 +227,7 @@ func (deputy *Deputy) sendBEP2Claim(swap *store.Swap) (string, error) {
 			))
 			deputy.DB.Create(txSent)
 		}
-		return "", fmt.Errorf("could not send Claim: %w", cmnErr) // TODO fix nil pointer dereferences
+		return "", fmt.Errorf("could not send Claim: %w", cmnErr)
 	}
 	util.Logger.Infof("send bep2 claim tx success, bnb_swap_id=%s, random_number=%s, tx_hash=%s",
 		swap.BnbChainSwapId, randomNumber.Hex(), txHash)

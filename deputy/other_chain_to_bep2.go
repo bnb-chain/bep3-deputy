@@ -225,7 +225,7 @@ func (deputy *Deputy) sendOtherClaim(swap *store.Swap) (string, error) {
 			))
 			deputy.DB.Create(txSent)
 		}
-		return "", fmt.Errorf("could not send Claim: %w", cmnErr) // TODO fix nil pointer dereferences
+		return "", fmt.Errorf("could not send Claim: %w", cmnErr)
 	}
 	util.Logger.Infof("send chain %s claim tx success, other_chain_swap_id=%s, tx_hash=%s", deputy.OtherExecutor.GetChain(),
 		otherChainSwapId.String(), txHash)
