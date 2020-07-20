@@ -117,7 +117,7 @@ func (deputy *Deputy) sendBEP2HTLT(swap *store.Swap) (string, error) {
 
 			deputy.UpdateSwapStatus(swap, store.SwapStatusRejected, "")
 			errMsg := fmt.Sprintf(
-				"set swap status to %s other_id=%s bnb_id=%s: bnb swap on chain doesn't match version in database",
+				"set swap status to %s other_id=%s bnb_id=%s: other swap on chain doesn't match version in database",
 				store.SwapStatusRejected, swap.OtherChainSwapId, swap.BnbChainSwapId,
 			)
 			deputy.sendTgMsg(errMsg)
