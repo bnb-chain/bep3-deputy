@@ -23,7 +23,7 @@ func (deputy *Deputy) BEP2SendHTLT() {
 				util.Logger.Info(fmt.Sprintf("attempting to send other chain HTLT for swap bnb_id=%s", swap.BnbChainSwapId))
 				_, err := deputy.sendOtherHTLT(swap)
 				if err != nil {
-					util.Logger.Error("submit other chain HTLT failed: %w", err)
+					util.Logger.Error("submit other chain HTLT failed: %s", err)
 				}
 			} else {
 				deputy.handleTxSent(swap, deputy.OtherExecutor.GetChain(), store.TxTypeOtherHTLT,
@@ -171,7 +171,7 @@ func (deputy *Deputy) BEP2SendClaim() {
 				util.Logger.Info(fmt.Sprintf("attempting to send bnb chain Claim for swap bnb_id=%s", swap.BnbChainSwapId))
 				_, err := deputy.sendBEP2Claim(swap)
 				if err != nil {
-					util.Logger.Error("submit bnb chain Claim failed: %w", err)
+					util.Logger.Error("submit bnb chain Claim failed: %s", err)
 				}
 			} else {
 				deputy.handleTxSent(swap, deputy.BnbExecutor.GetChain(), store.TxTypeBEP2Claim,
