@@ -134,7 +134,7 @@ func bep2(bnbNetwork int, configFile string) {
 
 	var otherExecutor dc.Executor
 	if config.EthConfig.SwapType == dc.EthSwapTypeEth {
-		otherExecutor = eth.NewEthExecutor(config.EthConfig.Provider, config.EthConfig.SwapContractAddr, config)
+		otherExecutor = eth.NewEthExecutor(config.EthConfig.Provider, config.EthConfig.SwapContractAddr, config.EthConfig)
 	} else {
 		otherExecutor = eth.NewErc20Executor(config.EthConfig.Provider, config.EthConfig.SwapContractAddr, config)
 	}
@@ -194,7 +194,7 @@ func erc20(bnbNetwork int, configFile string) {
 
 	var otherExecutor dc.Executor
 	if config.EthConfig.SwapType == dc.EthSwapTypeEth {
-		otherExecutor = eth.NewEthExecutor(config.EthConfig.Provider, config.EthConfig.SwapContractAddr, config)
+		otherExecutor = eth.NewEthExecutor(config.EthConfig.Provider, config.EthConfig.SwapContractAddr, config.EthConfig)
 	} else {
 		otherExecutor = eth.NewErc20Executor(config.EthConfig.Provider, config.EthConfig.SwapContractAddr, config)
 	}

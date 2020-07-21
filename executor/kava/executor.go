@@ -33,9 +33,8 @@ type Executor struct {
 
 	NetworkType client.ChainNetwork
 
-	Client        *client.KavaClient
-	Cdc           *amino.Codec
-	DeputyAddress sdk.AccAddress
+	Client *client.KavaClient
+	Cdc    *amino.Codec
 }
 
 // NewExecutor creates a new Executor
@@ -50,11 +49,16 @@ func NewExecutor(networkType client.ChainNetwork, cfg *util.KavaConfig) *Executo
 	// Set up Kava HTTP client and set codec
 	kavaClient := client.NewKavaClient(cdc, mnemonic, kava.Bip44CoinType, cfg.RpcAddr, networkType)
 
+	if !cfg.DeputyAddr.Equals(kavaClient.Keybase.GetAddr()) {
+		panic(fmt.Sprintf(
+			"deputy address supplied in config (%s) does not match mnemonic (%s)",
+			cfg.DeputyAddr, kavaClient.Keybase.GetAddr(),
+		))
+	}
 	return &Executor{
-		Config:        cfg,
-		Client:        kavaClient,
-		Cdc:           cdc,
-		DeputyAddress: cfg.DeputyAddr,
+		Config: cfg,
+		Client: kavaClient,
+		Cdc:    cdc,
 	}
 }
 
@@ -291,7 +295,7 @@ func (executor *Executor) Claim(swapId ec.Hash, randomNumber ec.Hash) (string, *
 	}
 
 	claimMsg := bep3.NewMsgClaimAtomicSwap(
-		executor.DeputyAddress,
+		executor.Config.DeputyAddr,
 		swapId[:],
 		randomNumber[:],
 	)
@@ -326,7 +330,7 @@ func (executor *Executor) Refund(swapId ec.Hash) (string, *common.Error) {
 	}
 
 	refundMsg := bep3.NewMsgRefundAtomicSwap(
-		executor.DeputyAddress,
+		executor.Config.DeputyAddr,
 		swapId[:],
 	)
 
@@ -452,7 +456,7 @@ func (executor *Executor) Refundable(swapId ec.Hash) (bool, error) {
 	return false, nil
 }
 
-// GetBalance gets the deputy's current kava-bnb balance
+// GetBalance gets an account's current kava-bnb balance
 func (executor *Executor) GetBalance(addressString string) (*big.Int, error) {
 	address, err := sdk.AccAddressFromBech32(addressString)
 	if err != nil {
@@ -494,7 +498,7 @@ func (executor *Executor) IsSameAddress(addrA string, addrB string) bool {
 func (executor *Executor) GetStatus() (interface{}, error) {
 	kavaStatus := &common.KavaStatus{}
 
-	deputy, err := executor.Client.GetAccount(executor.DeputyAddress)
+	deputy, err := executor.Client.GetAccount(executor.Config.DeputyAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -513,7 +517,7 @@ func (executor *Executor) GetBalanceAlertMsg() (string, error) {
 		return "", nil
 	}
 
-	deputy, err := executor.Client.GetAccount(executor.DeputyAddress)
+	deputy, err := executor.Client.GetAccount(executor.Config.DeputyAddr)
 	if err != nil {
 		return "", err
 	}
@@ -576,5 +580,5 @@ func (executor *Executor) SendAmount(address string, amount *big.Int) (string, e
 }
 
 func isInvalidSequenceError(err string) bool {
-	return strings.Contains(strings.ToLower(err), "invalid sequence")
+	return strings.Contains(strings.ToLower(err), "signature verification failed")
 }

@@ -34,7 +34,7 @@ cleanup_after_test_with_deadlock:
 	find . -name "*.go" | xargs -n 1 goimports -w
 	find . -name "*.go.mutex_bak" | xargs rm
 
-
+# note: if the deputy code changes, the container will need to be rebuit: cd integration_test && docker-compose build deputy
 test_integration:
 	cd integration_test && run-tests.sh
 
