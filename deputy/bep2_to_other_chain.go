@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 	"time"
 
 	ec "github.com/ethereum/go-ethereum/common"
@@ -21,9 +20,10 @@ func (deputy *Deputy) BEP2SendHTLT() {
 
 		for _, swap := range swaps {
 			if swap.Status == store.SwapStatusBEP2HTLTConfirmed {
+				util.Logger.Info(fmt.Sprintf("attempting to send other chain HTLT for swap bnb_id=%s", swap.BnbChainSwapId))
 				_, err := deputy.sendOtherHTLT(swap)
 				if err != nil {
-					util.Logger.Error(err.Error())
+					util.Logger.Errorf("submit other chain HTLT failed: %s", err)
 				}
 			} else {
 				deputy.handleTxSent(swap, deputy.OtherExecutor.GetChain(), store.TxTypeOtherHTLT,
@@ -37,7 +37,7 @@ func (deputy *Deputy) BEP2SendHTLT() {
 
 func (deputy *Deputy) sendOtherHTLT(swap *store.Swap) (string, error) {
 	if !deputy.ShouldSendHTLT() {
-		return "", errors.New(fmt.Sprintf("current mode is %s, we should not send HTLT tx now", deputy.mode))
+		return "", fmt.Errorf("current mode is %s, we should not send HTLT tx now", deputy.mode)
 	}
 
 	outAmount := big.NewInt(0)
@@ -49,8 +49,12 @@ func (deputy *Deputy) sendOtherHTLT(swap *store.Swap) (string, error) {
 
 		// Reject swap request
 		deputy.UpdateSwapStatus(swap, store.SwapStatusRejected, "")
-		return "", fmt.Errorf("reject swap for wrong params, bnb_swap_id=%s, amount=%s remaining_height_span=%d",
-			swap.BnbChainSwapId, outAmount.String(), swap.ExpireHeight-swap.Height)
+		errMsg := fmt.Sprintf(
+			"set swap status to %s other_id=%s bnb_id=%s: height span too small or swap amount outside allowed range",
+			store.SwapStatusRejected, swap.OtherChainSwapId, swap.BnbChainSwapId,
+		)
+		deputy.sendTgMsg(errMsg)
+		return "", errors.New(errMsg)
 	} else {
 		bigIntDecimal := util.GetBigIntForDecimal(deputy.Config.ChainConfig.OtherChainDecimal)
 
@@ -63,8 +67,12 @@ func (deputy *Deputy) sendOtherHTLT(swap *store.Swap) (string, error) {
 		// reject if params error
 		if actualOutAmount.Cmp(big.NewInt(0)) <= 0 || actualOutAmount.Cmp(deputy.Config.ChainConfig.OtherChainMaxDeputyOutAmount) > 0 {
 			deputy.UpdateSwapStatus(swap, store.SwapStatusRejected, "")
-			return "", fmt.Errorf("reject swap for wrong out_amount, bnb_swap_id=%s, out_amount=%s",
-				swap.BnbChainSwapId, actualOutAmount.String())
+			errMsg := fmt.Sprintf(
+				"set swap status to %s other_id=%s bnb_id=%s: transfer amount after fees subtracted is too small or big",
+				store.SwapStatusRejected, swap.OtherChainSwapId, swap.BnbChainSwapId,
+			)
+			deputy.sendTgMsg(errMsg)
+			return "", fmt.Errorf(errMsg)
 		}
 
 		otherChainSwapId := ec.HexToHash(swap.OtherChainSwapId)
@@ -81,14 +89,18 @@ func (deputy *Deputy) sendOtherHTLT(swap *store.Swap) (string, error) {
 
 		bnbCurHeight, err := deputy.BnbExecutor.GetHeight()
 		if err != nil {
-			return "", fmt.Errorf("query binance chain current height error error, err=%s", err.Error())
+			return "", fmt.Errorf("query binance chain current height error, err=%s", err.Error())
 		}
 
 		// update status if height remaining in binance chain is not enough
 		if swap.ExpireHeight-bnbCurHeight < deputy.Config.ChainConfig.BnbMinRemainHeight {
 			deputy.UpdateSwapStatus(swap, store.SwapStatusRejected, "")
-			return "", fmt.Errorf("reject swap for remaining binance chain height diff is not enough, current height=%d, expire height=%d, bnb_swap_id=%s",
-				bnbCurHeight, swap.ExpireHeight, swap.BnbChainSwapId)
+			errMsg := fmt.Sprintf(
+				"set swap status to %s other_id=%s bnb_id=%s: not enough time left before swap expires",
+				store.SwapStatusRejected, swap.OtherChainSwapId, swap.BnbChainSwapId,
+			)
+			deputy.sendTgMsg(errMsg)
+			return "", errors.New(errMsg)
 		}
 
 		bnbSwapRequest, err := deputy.BnbExecutor.GetSwap(bnbChainSwapId)
@@ -104,8 +116,12 @@ func (deputy *Deputy) sendOtherHTLT(swap *store.Swap) (string, error) {
 			bnbSwapRequest.ExpireHeight != swap.ExpireHeight {
 
 			deputy.UpdateSwapStatus(swap, store.SwapStatusRejected, "")
-			return "", fmt.Errorf("reject swap for mismatch of parameters, sender_addr=%s, recipient_addr=%s, out_amount=%s",
-				bnbSwapRequest.SenderAddress, bnbSwapRequest.RecipientAddress, bnbSwapRequest.OutAmount.String())
+			errMsg := fmt.Sprintf(
+				"set swap status to %s other_id=%s bnb_id=%s: bnb swap on chain doesn't match version in database",
+				store.SwapStatusRejected, swap.OtherChainSwapId, swap.BnbChainSwapId,
+			)
+			deputy.sendTgMsg(errMsg)
+			return "", errors.New(errMsg)
 		}
 
 		txSent := &store.TxSent{
@@ -120,20 +136,18 @@ func (deputy *Deputy) sendOtherHTLT(swap *store.Swap) (string, error) {
 			swap.OtherChainAddr, swap.SenderAddr, deputy.BnbExecutor.GetDeputyAddress(), actualOutAmount)
 
 		if cmnErr != nil {
-			errMsg := fmt.Sprintf(
-				"send chain %s HTLT tx error, bnb_swap_id=%s, is_retryable=%t, err=%s",
-				deputy.OtherExecutor.GetChain(), swap.BnbChainSwapId, cmnErr.Retryable(), cmnErr.Error(),
-			)
-			deputy.sendTgMsg(errMsg)
-
 			// is error retryable
 			if !cmnErr.Retryable() {
 				txSent.ErrMsg = cmnErr.Error()
 				txSent.Status = store.TxSentStatusFailed
 				deputy.UpdateSwapStatus(swap, store.SwapStatusOtherHTLTSentFailed, actualOutAmount.String())
+				deputy.sendTgMsg(fmt.Sprintf(
+					"set swap status to %s other_id=%s bnb_id=%s: got non retryable error from sending htlt: %s",
+					store.SwapStatusOtherHTLTSentFailed, swap.OtherChainSwapId, swap.BnbChainSwapId, cmnErr.Error(),
+				))
 				deputy.DB.Create(txSent)
 			}
-			return "", fmt.Errorf(errMsg)
+			return "", fmt.Errorf("could not send HTLT: %w", cmnErr)
 		}
 		util.Logger.Infof("send chain %s HTLT tx success, other_chain_swap_id=%s, tx_hash=%s", deputy.OtherExecutor.GetChain(),
 			swap.OtherChainSwapId, txHash)
@@ -153,9 +167,10 @@ func (deputy *Deputy) BEP2SendClaim() {
 
 		for _, swap := range swaps {
 			if swap.Status == store.SwapStatusOtherClaimConfirmed {
+				util.Logger.Info(fmt.Sprintf("attempting to send bnb chain Claim for swap bnb_id=%s", swap.BnbChainSwapId))
 				_, err := deputy.sendBEP2Claim(swap)
 				if err != nil {
-					util.Logger.Error(err.Error())
+					util.Logger.Errorf("submit bnb chain Claim failed: %s", err)
 				}
 			} else {
 				deputy.handleTxSent(swap, deputy.BnbExecutor.GetChain(), store.TxTypeBEP2Claim,
@@ -182,6 +197,10 @@ func (deputy *Deputy) sendBEP2Claim(swap *store.Swap) (string, error) {
 		curBlock := deputy.GetCurrentBlockLog(deputy.BnbExecutor.GetChain())
 		if curBlock.Height > swap.ExpireHeight {
 			deputy.UpdateSwapStatus(swap, store.SwapStatusBEP2HTLTExpired, "")
+			deputy.sendTgMsg(fmt.Sprintf(
+				"set swap status to %s other_id=%s bnb_id=%s: tried to send claim but bep2 htlt expired",
+				store.SwapStatusBEP2HTLTExpired, swap.OtherChainSwapId, swap.BnbChainSwapId,
+			))
 		}
 		return "", fmt.Errorf("bep2 swap can not be claimed, bnb_swap_id=%s", swap.BnbChainSwapId)
 	}
@@ -195,20 +214,19 @@ func (deputy *Deputy) sendBEP2Claim(swap *store.Swap) (string, error) {
 
 	txHash, cmnErr := deputy.BnbExecutor.Claim(bnbSwapId, randomNumber)
 	if cmnErr != nil {
-		errMsg := fmt.Sprintf("send bep2 claim tx error, bnb_swap_id=%s, err=%s", swap.BnbChainSwapId, cmnErr.Error())
-		// send alert msg if it is not Invalid sequence
-		if !strings.Contains(errMsg, "Invalid sequence") {
-			deputy.sendTgMsg(errMsg)
-		}
 
 		// is error retryable
 		if !cmnErr.Retryable() {
 			txSent.ErrMsg = cmnErr.Error()
 			txSent.Status = store.TxSentStatusFailed
 			deputy.UpdateSwapStatus(swap, store.SwapStatusBEP2ClaimSentFailed, "")
+			deputy.sendTgMsg(fmt.Sprintf(
+				"set swap status to %s other_id=%s bnb_id=%s: got non retryable error from sending claim: %s",
+				store.SwapStatusBEP2ClaimSentFailed, swap.OtherChainSwapId, swap.BnbChainSwapId, cmnErr.Error(),
+			))
 			deputy.DB.Create(txSent)
 		}
-		return "", fmt.Errorf(errMsg)
+		return "", fmt.Errorf("could not send Claim: %w", cmnErr)
 	}
 	util.Logger.Infof("send bep2 claim tx success, bnb_swap_id=%s, random_number=%s, tx_hash=%s",
 		swap.BnbChainSwapId, randomNumber.Hex(), txHash)

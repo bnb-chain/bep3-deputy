@@ -730,7 +730,7 @@ func TestDeputy_sendBEP2HTLT_HTLTFailed(t *testing.T) {
 
 	_, err = de.sendBEP2HTLT(swap)
 	require.NotNil(t, err, "error should not be nil")
-	require.Contains(t, err.Error(), "send bep2 HTLT tx error")
+	require.Contains(t, err.Error(), "Invalid sequence")
 
 	txSent := &store.TxSent{}
 	db.Where("swap_id = ?", swap.BnbChainSwapId).First(txSent)
@@ -744,7 +744,7 @@ func TestDeputy_sendBEP2HTLT_HTLTFailed(t *testing.T) {
 	// other error, will create tx sent record
 	_, err = de.sendBEP2HTLT(swap)
 	require.NotNil(t, err, "error should not be nil")
-	require.Contains(t, err.Error(), "send bep2 HTLT tx error")
+	require.Contains(t, err.Error(), "one error")
 
 	txSent = &store.TxSent{}
 	db.Where("swap_id = ?", swap.BnbChainSwapId).First(txSent)
@@ -795,7 +795,7 @@ func TestDeputy_sendBEP2HTLT_HTLTFailed_MismatchedParams(t *testing.T) {
 
 	_, err = de.sendBEP2HTLT(swap)
 	require.NotNil(t, err, "error should not be nil")
-	require.Contains(t, err.Error(), "reject swap for mismatch of parameters")
+	require.Contains(t, err.Error(), "swap on chain doesn't match version in database")
 }
 
 func TestDeputy_sendBEP2HTLT_HTLTSuccess(t *testing.T) {
@@ -1098,7 +1098,7 @@ func TestDeputy_sendOtherHTLT_HTLTFailed(t *testing.T) {
 	// Invalid sequence error
 	_, err = de.sendOtherHTLT(swap)
 	require.NotNil(t, err, "error should not be nil")
-	require.Contains(t, err.Error(), "HTLT tx error")
+	require.Contains(t, err.Error(), "one error")
 }
 
 func TestDeputy_sendOtherHTLT_HTLTFailed_MismatchedParams(t *testing.T) {
@@ -1145,7 +1145,7 @@ func TestDeputy_sendOtherHTLT_HTLTFailed_MismatchedParams(t *testing.T) {
 	// Invalid sequence error
 	_, err = de.sendOtherHTLT(swap)
 	require.NotNil(t, err, "error should not be nil")
-	require.Contains(t, err.Error(), "reject swap for mismatch of parameters")
+	require.Contains(t, err.Error(), "swap on chain doesn't match version in database")
 }
 
 func TestDeputy_sendOtherHTLT_HTLTSuccess(t *testing.T) {
@@ -1359,7 +1359,7 @@ func TestDeputy_sendBEP2Claim(t *testing.T) {
 
 	_, err = de.sendBEP2Claim(swap)
 	require.NotNil(t, err, "err should not be nil")
-	require.Contains(t, err.Error(), "send bep2 claim tx error")
+	require.Contains(t, err.Error(), "Invalid sequence")
 
 	de.DB.Create(swap)
 
@@ -1369,7 +1369,7 @@ func TestDeputy_sendBEP2Claim(t *testing.T) {
 
 	_, err = de.sendBEP2Claim(swap)
 	require.NotNil(t, err, "err should not be nil")
-	require.Contains(t, err.Error(), "send bep2 claim tx error")
+	require.Contains(t, err.Error(), "other error")
 
 	txSent := &store.TxSent{}
 	db.Where("swap_id = ?", swap.BnbChainSwapId).First(txSent)
@@ -1427,7 +1427,7 @@ func TestDeputy_sendOtherClaim(t *testing.T) {
 
 	_, err = de.sendOtherClaim(swap)
 	require.NotNil(t, err, "err should not be nil")
-	require.Contains(t, err.Error(), fmt.Sprintf("send chain %s claim tx error", otherChainExecutor.GetChain()))
+	require.Contains(t, err.Error(), "other error")
 
 	de.DB.Create(swap)
 
