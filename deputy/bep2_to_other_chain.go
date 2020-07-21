@@ -136,7 +136,6 @@ func (deputy *Deputy) sendOtherHTLT(swap *store.Swap) (string, error) {
 			swap.OtherChainAddr, swap.SenderAddr, deputy.BnbExecutor.GetDeputyAddress(), actualOutAmount)
 
 		if cmnErr != nil {
-
 			// is error retryable
 			if !cmnErr.Retryable() {
 				txSent.ErrMsg = cmnErr.Error()
