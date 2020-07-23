@@ -72,6 +72,11 @@ func TestMain(m *testing.M) {
 		kavaUserAddrs = append(kavaUserAddrs, kavaAddressFromMnemonic(m).String())
 	}
 
+	// Configure the global logging level so binance go-sdk doesn't output so much.
+	config := util.ParseConfigFromFile("deputy/config.json")
+	config.LogConfig.Level = "INFO"
+	util.InitLogger(*config.LogConfig)
+
 	os.Exit(m.Run())
 }
 
