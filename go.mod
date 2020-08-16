@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/aws/aws-sdk-go v1.27.0
-	github.com/binance-chain/go-sdk v1.2.0
+	github.com/binance-chain/go-sdk v1.2.4-0.20200806023615-6e29c019ead2
 	github.com/binance-chain/ledger-cosmos-go v0.9.9 // indirect
 	github.com/cespare/cp v1.1.1 // indirect
 	github.com/ethereum/go-ethereum v1.9.10
