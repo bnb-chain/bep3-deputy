@@ -5,7 +5,7 @@ storage will not grow without limit.
 
 + dialect: it should be `sqlite3` or `mysql`, only sqlite and mysql are supported for now.
 + db_path: db file path or mysql db config, eg(`root:12345678@(127.0.0.1:3306)/deputy?charset=utf8&parseTime=True&loc=Local`).
-+ max_bnb_kept_block_height: how many recent blocks of binance chain you want to keep.
++ max_bnb_kept_block_height: how many recent blocks of bnb chain you want to keep.
 + max_other_kept_block_height: how many recent blocks of other chain you want to keep.
 
 
@@ -15,7 +15,7 @@ Deputy will send alert messages to telegram group if block is not fetched for a 
 
 + telegram_bot_id: `telegram_bot_id` is your telegram bot id.
 + telegram_chat_id: `telegram_chat_id` is chat id of group your bot joined.
-+ bnb_block_update_time_out: `bnb_block_update_time_out` is how long(in seconds) that block is not fetched in binance chain you want 
++ bnb_block_update_time_out: `bnb_block_update_time_out` is how long(in seconds) that block is not fetched in bnb chain you want 
 deputy to send alert messages.
 + other_chain_block_update_time_out: `other_chain_block_update_time_out` is how long(in seconds) that block is not fetched in other chain
 you want deputy to send alert messages.
@@ -28,23 +28,23 @@ References:
 
 ## Chain config
 
-Chain common config for deputy. Pls note that `swap_amount` and `fixed_fee` below are number with decimal. For example, decimal in binance chain 
+Chain common config for deputy. Pls note that `swap_amount` and `fixed_fee` below are number with decimal. For example, decimal in bnb chain 
 is 8 which means 100000000 is 1 actually. You need to handle decimal and amount with decimal.
 
-+ bnb_confirm_num: number of confirmations in binance chain. 2 is enough for binance does not have forks.
-+ bnb_auto_retry_num: number of retry if tx sent by deputy in binance chain is lost(node returned tx hash but it's not included in blockchain).
-+ bnb_auto_retry_timeout: how long(in seconds) you think tx is lost if it is not included in binance chain. 
++ bnb_confirm_num: number of confirmations in bnb chain. 2 is enough for bnb does not have forks.
++ bnb_auto_retry_num: number of retry if tx sent by deputy in bnb chain is lost(node returned tx hash but it's not included in blockchain).
++ bnb_auto_retry_timeout: how long(in seconds) you think tx is lost if it is not included in bnb chain. 
 + bnb_expire_height_span: expire height span of HTLT tx sent by deputy.
-+ bnb_min_accept_expire_height_span: min expire height span for received HTLT tx in binance chain.
-+ bnb_min_remain_height: min expire remaining height for HTLT tx in binance chain when send HTLT tx in other chain.
++ bnb_min_accept_expire_height_span: min expire height span for received HTLT tx in bnb chain.
++ bnb_min_remain_height: min expire remaining height for HTLT tx in bnb chain when send HTLT tx in other chain.
 + bnb_min_swap_amount: min swap amount(with decimal) for each swap request.
 + bnb_max_swap_amount: max swap amount(with decimal) for each swap request.
 + bnb_max_deputy_out_amount: max deputy out amount(with decimal) for each swap request.
-+ bnb_ratio: ratio of token swap out from deputy in binance chain. for example, if ratio is 0.8, when someone send deputy 100 tokens, deputy
++ bnb_ratio: ratio of token swap out from deputy in bnb chain. for example, if ratio is 0.8, when someone send deputy 100 tokens, deputy
 will swap 100*0.8=80 tokens out.
 + bnb_fixed_fee: fee(with decimal) deputy wants to charge for every swap request for swap related txs cost `BNB`. for example, if fixed fee is 100 and deputy 
 need to swap out 1000 tokens, it will deduct fixed fee first, and it will swap 1000-100=900 tokens out at last.
-+ bnb_start_height: start height of binance chain you want to sync like block chain height when you start your deputy.
++ bnb_start_height: start height of bnb chain you want to sync like block chain height when you start your deputy.
 
 + other_chain: chain name of other chain, `ETH` is supported only for now.
 + other_chain_confirm_num: number of confirmations in other chain. 
@@ -53,7 +53,7 @@ need to swap out 1000 tokens, it will deduct fixed fee first, and it will swap 1
 + other_chain_auto_retry_timeout: how long(in seconds) you think tx is lost if it is not included in other chain(pending or can not found in blockchain). 
 + other_chain_expire_height_span: expire height span of HTLT tx sent by deputy.
 + other_chain_min_accept_expire_height_span: min expire height span for received HTLT tx in other chain.
-+ other_chain_min_remain_height: min expire remaining height for HTLT tx in other chain when send HTLT tx in binance chain.
++ other_chain_min_remain_height: min expire remaining height for HTLT tx in other chain when send HTLT tx in bnb chain.
 + other_chain_min_swap_amount: min swap amount(with decimal) for each swap request.
 + other_chain_max_swap_amount: max swap amount(with decimal) for each swap request.
 + other_chain_max_deputy_out_amount: max deputy out amount(with decimal) for each swap request.
@@ -75,14 +75,14 @@ should only be exposed to authorized machines.
 + prometheus_listen_addr: listen address of prometheus. If you want to deploy deputy in container, you may need to listen on `0.0.0.0`. This listen address 
 should only be exposed to authorized machines.
 
-## Binance chain config
+## BNB chain config
 
 + key_type:  `mnemonic` and `aws_mnemonic` supported. `mnemonic` will use mnemonic provided below and `aws_mnemonic`
  will fetch mnemonic from aws secret manager.
 + aws_region: region of aws
 + aws_secret_name: secret name of private key in aws
 + mnemonic: mnemonic of deputy account
-+ rpc_addr": rpc address of binance chain
++ rpc_addr": rpc address of bnb chain
 + symbol: symbol of token you want to swap
 + deputy_addr: address of deputy
 + fetch_interval: block fetch interval.

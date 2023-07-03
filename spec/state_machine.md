@@ -2,21 +2,21 @@
 ## Overview
 
 This doc describes lifecycle of two types of swap request:
-+ swap from binance chain to other chain
-+ swap from other chain to binance chain
++ swap from bnb chain to other chain
++ swap from other chain to bnb chain
 
 There would be many intermediate statuses during the lifecycle of a swap request. Deputy is responsible for managing these 
-statuses and send corresponding txs timely. For example, a swap request from other chain to binance chain will start at
+statuses and send corresponding txs timely. For example, a swap request from other chain to bnb chain will start at
 when HTLT tx confirmed by blockchain, and the lifecycle will end at when deputy claimed tokens if everything goes well or 
 the lifecycle will end at when user refund tokens if there is something wrong.
 
 The below parts describe all statuses a swap request may go through.
 
-## Swap from binance chain to other chain
+## Swap from bnb chain to other chain
 
 ![](./assets/bep2_to_other.png)
 
-## Swap from other chain to binance chain
+## Swap from other chain to bnb chain
 
 ![](./assets/other_to_bep2.png)
 
@@ -33,16 +33,16 @@ The below parts describe all statuses a swap request may go through.
 + OTHER_REFUND_SENT_FAILED: refund tx sent on other chain by deputy is failed. it can be failed like balance is not enough.
 + OTHER_REFUND_CONFIRMED: refund tx on other chain is confirmed by a number of blocks which is specified in config.
 
-+ BEP2_HTLT_CONFIRMED: HTTL tx on binance chain is confirmed by a number of blocks which is specified in config.
-+ BEP2_HTLT_SENT: HTLT tx is sent on binance chain by deputy but it is not confirmed by blockchain.
-+ BEP2_HTLT_EXPIRED: HTLT tx on binance chain is expired. tx could be sent by user and deputy.
-+ BEP2_HTLT_SENT_FAILED: HTLT tx sent on binance chain by deputy is failed. it can be failed like balance is not enough.
-+ BEP2_CLAIM_SENT: claim tx is sent on binance chain by deputy but it is not confirmed by blockchain.
-+ BEP2_CLAIM_SENT_FAILED: claim tx sent on binance chain by deputy is failed. the failed reason may be different.
-+ BEP2_CLAIM_CONFIRMED: claim tx on binance chain is confirmed by a number of blocks which is specified in config.
++ BEP2_HTLT_CONFIRMED: HTTL tx on bnb chain is confirmed by a number of blocks which is specified in config.
++ BEP2_HTLT_SENT: HTLT tx is sent on bnb chain by deputy but it is not confirmed by blockchain.
++ BEP2_HTLT_EXPIRED: HTLT tx on bnb chain is expired. tx could be sent by user and deputy.
++ BEP2_HTLT_SENT_FAILED: HTLT tx sent on bnb chain by deputy is failed. it can be failed like balance is not enough.
++ BEP2_CLAIM_SENT: claim tx is sent on bnb chain by deputy but it is not confirmed by blockchain.
++ BEP2_CLAIM_SENT_FAILED: claim tx sent on bnb chain by deputy is failed. the failed reason may be different.
++ BEP2_CLAIM_CONFIRMED: claim tx on bnb chain is confirmed by a number of blocks which is specified in config.
 + BEP2_REFUND_SENT: refund tx is sent on other chain by deputy but it is not confirmed by blockchain.
-+ BEP2_REFUND_SENT_FAILED: refund tx sent on binance chain by deputy is failed. he failed reason may be different
-+ BEP2_REFUND_CONFIRMED: refund tx on binance chain is confirmed by a number of blocks which is specified in config.
++ BEP2_REFUND_SENT_FAILED: refund tx sent on bnb chain by deputy is failed. he failed reason may be different
++ BEP2_REFUND_CONFIRMED: refund tx on bnb chain is confirmed by a number of blocks which is specified in config.
 
 + REJECTED: swap request was rejected by deputy. for example, if the swap amount exceeds the max swap amount deputy accepts, it will be rejected.
 
