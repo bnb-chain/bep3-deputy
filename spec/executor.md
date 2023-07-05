@@ -4,7 +4,7 @@
 Executor interacts with blockchain and it provides methods that deputy needs. It can get blocks and txs from blockchain, 
 get swap status, send swap related txs to blockchain and so on.
 
-Executor is a interface, if you want to add support for other chain besides ethereum and binance chain, you just need
+Executor is a interface, if you want to add support for other chain besides ethereum and bnb beacon chain, you just need
 to implement an executor.
 
 Below is the interface detail:

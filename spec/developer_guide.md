@@ -1,6 +1,6 @@
 
-For now, we only support atomic swaps between binance chain and ethereum. Our goal is to support
-binance chain and any other chain based on blocks and supports atomic swap(evm based or other platform).
+For now, we only support atomic swaps between bnb chain and ethereum. Our goal is to support
+bnb chain and any other chain based on blocks and supports atomic swap(evm based or other platform).
 
 For overview of deputy, you can refer to [this doc](./deputy.md).
 
@@ -11,7 +11,7 @@ for more details.
 There are three main components: blockchain executor, blockchain observer and deputy. blockchain executor is an 
 interface which interacts with blockchains, it has all methods we need so far. blockchain observer is a generic 
 component which store txs and block info of blockchain, but we only support block based blockchains like ethereum, 
-binance chain, eos and etc. deputy is the component responsible for managing life cycle of swaps.
+bnb chain, eos and etc. deputy is the component responsible for managing life cycle of swaps.
 
 But if you want to add support for other chain like eos, you need to do is to implement a block executor based on eos.
 
@@ -27,7 +27,7 @@ What you need to do is add your config in `util/config.go` and do not forget to 
 Suppose you have added your specific config, you need to do now is implement an executor. You can refer to [executor doc](./executor.md) 
 here.
 
-You can refer to binance chain executor or ethereum executor. The interface contains all the methods we need for 
+You can refer to bnb chain executor or ethereum executor. The interface contains all the methods we need for 
 observer and deputy components. 
 
 ## Step 3: init your executor when starting 
