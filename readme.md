@@ -1,3 +1,4 @@
+**This repo is out of maintenance and decommissioned.**
 # Deputy
 
 **Deputy is responsible for handling swap requests from users automatically**. It will monitor swap requests from both 
